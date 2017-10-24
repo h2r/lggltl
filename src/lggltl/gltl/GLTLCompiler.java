@@ -3,6 +3,7 @@ package lggltl.gltl;
 import burlap.debugtools.RandomFactory;
 import burlap.mdp.auxiliary.DomainGenerator;
 import burlap.mdp.core.Domain;
+import burlap.mdp.core.StateTransitionProb;
 import burlap.mdp.core.TerminalFunction;
 import burlap.mdp.core.action.Action;
 import burlap.mdp.core.action.ActionType;
@@ -11,15 +12,21 @@ import burlap.mdp.core.oo.state.MutableOOState;
 import burlap.mdp.core.oo.state.OOState;
 import burlap.mdp.core.oo.state.ObjectInstance;
 import burlap.mdp.core.state.State;
+import burlap.mdp.singleagent.model.FactoredModel;
 import burlap.mdp.singleagent.model.RewardFunction;
+import burlap.mdp.singleagent.model.statemodel.FullStateModel;
+import burlap.mdp.singleagent.model.statemodel.SampleStateModel;
 import burlap.mdp.singleagent.oo.OOSADomain;
-import lggltl.gltl.state.GLTLSpec;
+import lggltl.gltl.state.GLTLState;
 
 import java.util.*;
 
 /**
- * @author James MacGlashan, reworked by Michael Littman, rereworked by Dilip Arumugam
+ * @author James MacGlashan, reworked by Michael Littman, rereworked by Dilip Arumugam rereworked by nakul gopalan
  */
+
+//TODO: the env. state needs to be an OOState for this domain because Prop functions are OO that seems stupid!!
+//TODO: the env. needs to have a full model and not just a sample model in this code!
 public class GLTLCompiler implements DomainGenerator {
 
     /** Name for OO-MDP class denoting GLTL spec MDP state **/
@@ -27,6 +34,9 @@ public class GLTLCompiler implements DomainGenerator {
 
     /** Integer attribute representing state of GLTL spec MDP (init, acc, rej) **/
     public static final String ATTSPEC = "##spec";
+
+    /** Compiled action type name **/
+    public static  final String ACTION_COMPILED = "compiledActionType";
 
 
     /** Environment MDP that we would like to act in **/
@@ -65,22 +75,23 @@ public class GLTLCompiler implements DomainGenerator {
         this.environmentDomain = environmentDomain;
     }
 
-    public OOState addInitialTaskStateToEnvironmentState(OOSADomain compiledDomain, OOState environmentState) {
+    public OOState addInitialTaskStateToEnvironmentState(OOState environmentState) {
 
-        MutableOOState newState = (MutableOOState) environmentState.copy();
+//        MutableOOState newState = (MutableOOState) environmentState.copy();
+//
+//        //first remove any task spec objects if they are there
+//        for (ObjectInstance ob : newState.objectsOfClass(CLASSSPEC)) {
+//            newState.removeObject(ob.name());
+//        }
+//
+//
+//        ObjectInstance taskOb = new ObjectInstance(compiledDomain.stateClass(CLASSSPEC), CLASSSPEC);
+//
+//        taskOb.setValue(ATTSPEC, 2);
+//
+//        newState.addObject(taskOb);
 
-        //first remove any task spec objects if they are there
-        for (ObjectInstance ob : newState.objectsOfClass(CLASSSPEC)) {
-            newState.removeObject(ob.name());
-        }
-
-        ObjectInstance taskOb = new ObjectInstance(compiledDomain.stateClass(CLASSSPEC), CLASSSPEC);
-
-        taskOb.setValue(ATTSPEC, 2);
-
-        newState.addObject(taskOb);
-
-        return newState;
+        return new GLTLState(environmentState);
 
     }
 
@@ -90,28 +101,28 @@ public class GLTLCompiler implements DomainGenerator {
 
         OOSADomain domain = new OOSADomain();
 
-        domain.addStateClass(CLASSSPEC, GLTLSpec.class);
+        domain.addStateClass(CLASSSPEC, GLTLState.class);
+
+        FactoredModel model = new FactoredModel(GLTLModel(this.environmentDomain), this.generateRewardFunction(), this.generateTerminalFunction());
 
 
-        Attribute specAtt = new Attribute(domain, ATTSPEC, Attribute.AttributeType.INT);
-
-        ObjectClass specClass = new ObjectClass(domain, CLASSSPEC);
-        specClass.addAttribute(specAtt);
+        domain.setModel(model);
 
         TransitionQuery transitionQuery = TransitionQuery.compileFormula(domain, this.formula, 0);
 
 
 //      DUMP GRAPH for debugging
+        //TODO: graph does not look like this!
         System.out.println(transitionQuery.symbolMap);
         for (Map.Entry<IntegerPair, List<TaskMDPTransition>> e : transitionQuery.transitions.entrySet()) {
             System.out.println(e.getKey().a + ", " + e.getKey().b);
             for (TaskMDPTransition trans : e.getValue()) {
-                System.out.println(trans.p + "->" + trans.taskObject.getIntValForAttribute(ATTSPEC));
+                System.out.println(trans.p + "->" + trans.task);
             }
         }
         System.out.println("=========");
 
-        for (Action a : this.environmentDomain.getActions()) {
+        for (ActionType a : this.environmentDomain.getActionTypes()) {
             new CompiledActionType(a, domain, this.formula, this.symbolEvaluator, transitionQuery);
         }
 
@@ -119,20 +130,23 @@ public class GLTLCompiler implements DomainGenerator {
 
     }
 
+    private SampleStateModel GLTLModel(OOSADomain environmentDomain) {
+        //TODO: need to make a model
+        return null;
+    }
+
     public RewardFunction generateRewardFunction() {
 
         return new RewardFunction() {
             @Override
-            public double reward(State state, Action action, State state1) {
-                ObjectInstance spec = sprime.getFirstObjectOfClass(CLASSSPEC);
-                int aSpec = spec.getIntValForAttribute(ATTSPEC);
+            public double reward(State s, Action action, State sprime) {
+                int specOld = ((GLTLState)s).spec;
 
-                ObjectInstance oldSpec = s.getFirstObjectOfClass(CLASSSPEC);
-                int oSpec = oldSpec.getIntValForAttribute(ATTSPEC);
+                int specNew = ((GLTLState)sprime).spec;
 
-                if (aSpec == 1 && !(oSpec == 1)) {
+                if (specNew == 1 && !(specOld == 1)) {
                     return 1.;
-                } else if (aSpec == 0) {
+                } else if (specNew == 0) {
                     return 0;
                 } else {
                     return 0;
@@ -146,8 +160,7 @@ public class GLTLCompiler implements DomainGenerator {
         return new TerminalFunction() {
             @Override
             public boolean isTerminal(State s) {
-                ObjectInstance spec = s.getFirstObjectOfClass(CLASSSPEC);
-                int as = spec.getIntValForAttribute(ATTSPEC);
+                int as = ((GLTLState)s).spec;
 
                 return ((as == 1) || (as == 0));
             }
@@ -157,73 +170,88 @@ public class GLTLCompiler implements DomainGenerator {
 
     public static class CompiledActionType implements ActionType {
 
-        protected Action srcAction;
+        protected ActionType srcActionType;
         protected String formula;
         protected SymbolEvaluator symbolEvaluator;
         protected TransitionQuery transitions;
+        protected FullStateModel model;
 
-        public CompiledActionType(Action srcAction, Domain domain, String formula, SymbolEvaluator symbolEvaluator, TransitionQuery transitions) {
-            super(srcAction.getName(), domain, srcAction.getParameterClasses(), srcAction.getParameterOrderGroups());
-            this.srcAction = srcAction;
+
+        public CompiledActionType(ActionType srcActionType, OOSADomain domain, String formula, SymbolEvaluator symbolEvaluator, TransitionQuery transitions) {
+//            super(srcType.typeName(), domain, srcAction.getParameterClasses(), srcAction.getParameterOrderGroups());
+            this.srcActionType = srcActionType;
             this.formula = formula;
             this.symbolEvaluator = symbolEvaluator;
             this.transitions = transitions;
+            this.model = (FullStateModel)domain.getModel();
         }
 
-        @Override
-        public List<TransitionProbability> getTransitions(State s, String[] params) {
-
-            //get the environment mdp transition dynamics
-            List<TransitionProbability> environmentTPs = this.srcAction.getTransitions(s, params);
-
-            //reserve space for the joint task-environment mdp transitions
-            List<TransitionProbability> jointTPs = new ArrayList<TransitionProbability>(environmentTPs.size() * 2);
-
-            //perform outer loop of transitions cross product over environment transitions
-            for (TransitionProbability etp : environmentTPs) {
-
-                //get the task transitions and expand them with the environment transition
-                List<TaskMDPTransition> taskTPs = this.getTaskTransitions(s, etp.s);
-//				System.out.println("===>" + taskTPs.size());
-                double taskSum = 0.;
-                for (TaskMDPTransition ttp : taskTPs) {
-                    State ns = etp.s.copy();
-                    //remove the old task spec
-                    ns.removeObject(ns.getFirstObjectOfClass(CLASSSPEC).getName());
-                    //set the new task spec
-                    ns.addObject(ttp.taskObject);
-                    double p = etp.p * ttp.p;
-                    TransitionProbability jtp = new TransitionProbability(ns, p);
-                    jointTPs.add(jtp);
-
-                    taskSum += ttp.p;
-                }
-
-                if (Math.abs(taskSum - 1.) > 1e-5) {
-                    throw new RuntimeException("Error, could not return transition probabilities because task MDP transition probabilities summed to " + taskSum + " instead of 1.");
-                }
-
-            }
-
-
-            return jointTPs;
+        public SymbolEvaluator getSymbolEvaluator() {
+            return symbolEvaluator;
         }
+
+        public String getFormula() {
+            return formula;
+        }
+
+
+
+//        public List<StateTransitionProb> getTransitions(State s, String[] params) {
+//
+//            //get the environment mdp transition dynamics
+//            List<StateTransitionProb> environmentTPs = this.model.stateTransitions(s, this.srcActionType);
+//
+//            //reserve space for the joint task-environment mdp transitions
+//            List<StateTransitionProb> jointTPs = new ArrayList<StateTransitionProb>(environmentTPs.size() * 2);
+//
+//            //perform outer loop of transitions cross product over environment transitions
+//            for (StateTransitionProb etp : environmentTPs) {
+//
+//                //get the task transitions and expand them with the environment transition
+//                List<TaskMDPTransition> taskTPs = this.getTaskTransitions(s, etp.s);
+////				System.out.println("===>" + taskTPs.size());
+//                double taskSum = 0.;
+//                for (TaskMDPTransition ttp : taskTPs) {
+//                    State ns = etp.s.copy();
+//                    //remove the old task spec
+//                    ns.removeObject(ns.getFirstObjectOfClass(CLASSSPEC).getName());
+//                    //set the new task spec
+//                    ns.addObject(ttp.taskObject);
+//                    double p = etp.p * ttp.p;
+//                    StateTransitionProb jtp = new StateTransitionProb(ns, p);
+//                    jointTPs.add(jtp);
+//
+//                    taskSum += ttp.p;
+//                }
+//
+//                if (Math.abs(taskSum - 1.) > 1e-5) {
+//                    throw new RuntimeException("Error, could not return transition probabilities because task MDP transition probabilities summed to " + taskSum + " instead of 1.");
+//                }
+//
+//            }
+//
+//
+//            return jointTPs;
+//        }
 // We want to know, given a pair of s and s', what's the probability of making a transition
 // from s to s'.
 
         protected List<TaskMDPTransition> getTaskTransitions(State s, State nextEnvState) {
 
-            State ss = s.copy();
+            GLTLState gs = (GLTLState)s;
 
-            ObjectInstance agentSpec = s.getFirstObjectOfClass(CLASSSPEC);
+            GLTLState ss = gs.copy();
 
-            int curStateSpec = agentSpec.getIntValForAttribute(ATTSPEC); // task state (for s)
+//            ObjectInstance agentSpec = s.getFirstObjectOfClass(CLASSSPEC);
+
+            int curStateSpec = gs.spec; // task state (for s)
 
             List<String> dependencies = this.transitions.symbolDependencies(curStateSpec);
 
+            //TODO: can we compare this to a point in the paper. IDK what is going on here!!!!
             int actionlabel = 0;
             for (String symbolName : dependencies) {
-                actionlabel = 2 * actionlabel + ((this.symbolEvaluator.eval(symbolName, nextEnvState)) ? 1 : 0);
+                actionlabel = 2 * actionlabel + ((this.symbolEvaluator.eval(symbolName, (OOState) nextEnvState)) ? 1 : 0);
             }
 
 //			System.out.println(curStateSpec + "/" + actionlabel + ">" + dependencies);
@@ -231,69 +259,87 @@ public class GLTLCompiler implements DomainGenerator {
             return this.transitions.nextTaskStateTransitions(curStateSpec, actionlabel);
         }
 
+//        @Override
+//        protected State performActionHelper(State s, String[] params) {
+//
+//            //sample an environment state
+//            State environmentNextState = this.srcAction.performAction(s, params);
+//
+//            //determine the next task state distribution and sample from it
+//            List<TaskMDPTransition> taskTPs = this.getTaskTransitions(s, environmentNextState);
+//            double r = RandomFactory.getMapped(0).nextDouble();
+//            double sumP = 0.;
+//            for (TaskMDPTransition ttp : taskTPs) {
+//                sumP += ttp.p;
+//                if (r < sumP) {
+//                    //remove the old task spec
+//                    environmentNextState.removeObject(environmentNextState.getFirstObjectOfClass(CLASSSPEC).getName());
+//                    //set the new task spec
+//                    environmentNextState.addObject(ttp.taskObject);
+//                    return environmentNextState;
+//                }
+//            }
+//
+//            throw new RuntimeException("Could not sample action from " + this.getName() + " because the task transition dynamics did not sum to 1.)");
+//        }
+
+//        @Override
+//        public boolean parametersAreObjects() {
+//            return this.srcAction.parametersAreObjects();
+//        }
+
+//        @Override
+//        public boolean applicableInState(State s, String[] params) {
+//            return this.srcAction.applicableInState(s, params);
+//        }
+
+
         @Override
-        protected State performActionHelper(State s, String[] params) {
-
-            //sample an environment state
-            State environmentNextState = this.srcAction.performAction(s, params);
-
-            //determine the next task state distribution and sample from it
-            List<TaskMDPTransition> taskTPs = this.getTaskTransitions(s, environmentNextState);
-            double r = RandomFactory.getMapped(0).nextDouble();
-            double sumP = 0.;
-            for (TaskMDPTransition ttp : taskTPs) {
-                sumP += ttp.p;
-                if (r < sumP) {
-                    //remove the old task spec
-                    environmentNextState.removeObject(environmentNextState.getFirstObjectOfClass(CLASSSPEC).getName());
-                    //set the new task spec
-                    environmentNextState.addObject(ttp.taskObject);
-                    return environmentNextState;
-                }
+        public List<Action> allApplicableActions(State s) {
+            List<Action> srcGas = this.srcActionType.allApplicableActions(s);
+            List<Action> targetGas = new ArrayList<Action>(srcGas.size());
+            for (Action ga : srcGas) {
+                targetGas.add(new CompiledAction(ga, this));
             }
-
-            throw new RuntimeException("Could not sample action from " + this.getName() + " because the task transition dynamics did not sum to 1.)");
-        }
-
-        @Override
-        public boolean parametersAreObjects() {
-            return this.srcAction.parametersAreObjects();
-        }
-
-        @Override
-        public boolean applicableInState(State s, String[] params) {
-            return this.srcAction.applicableInState(s, params);
-        }
-
-
-        @Override
-        public List<GroundedAction> getAllApplicableGroundedActions(State s) {
-            List<GroundedAction> srcGas = this.srcAction.getAllApplicableGroundedActions(s);
-            List<GroundedAction> targetGas = new ArrayList<GroundedAction>(srcGas.size());
-            for (GroundedAction ga : srcGas) {
-                targetGas.add(new GroundedAction(this, ga.params));
-            }
-
             return targetGas;
         }
 
+//        @Override
+//        public List<GroundedAction> allApplicableActions(State s) {
+//            List<GroundedAction> srcGas = this.srcAction.getAllApplicableGroundedActions(s);
+//            List<GroundedAction> targetGas = new ArrayList<GroundedAction>(srcGas.size());
+//            for (GroundedAction ga : srcGas) {
+//                targetGas.add(new GroundedAction(this, ga.params));
+//            }
+//
+//            return targetGas;
+//        }
+
         @Override
         public String typeName() {
-            return null;
+            return ACTION_COMPILED;
         }
 
         @Override
         public Action associatedAction(String s) {
-            return null;
+            // this is missing as this method is being used on shell, I do not think we need it
+            // and we do not have a way to create a wrapped action when do not know which source action.
+            throw new RuntimeException("There are no associated parameterized actions.");
         }
 
-        @Override
-        public List<Action> allApplicableActions(State state) {
-            return null;
-        }
     }
 
+
+    //TODO: the equality and hashcode should check for the environment action too!!
     public static class CompiledAction implements Action {
+        static Action srcAction;
+        static String compiledActionName = "compiledAction";
+        static CompiledActionType at;
+
+        public CompiledAction(Action srcAction, CompiledActionType at){
+            this.srcAction = srcAction;
+            this.at = at;
+        }
 
         @Override
         public String actionName() {
@@ -311,18 +357,25 @@ public class GLTLCompiler implements DomainGenerator {
             if (o == null || getClass() != o.getClass()) return false;
 
             CompiledAction that = (CompiledAction) o;
-            return this.actionName().equals((that).actionName());
+            return this.srcAction.equals((that).srcAction);
+        }
+
+        public Action getSourceAction(){
+            return this.srcAction;
+        }
+
+        public CompiledActionType getCompiledActionType(){
+            return this.at;
         }
 
         @Override
         public int hashCode() {
-            String str = ACTION_PULL;
-            return str.hashCode();
+            return compiledActionName.hashCode() + srcAction.hashCode();
         }
 
         @Override
         public String toString() {
-            return this.actionName();
+            return this.actionName() + "_" + this.srcAction.actionName();
         }
     }
 
@@ -352,17 +405,20 @@ public class GLTLCompiler implements DomainGenerator {
         }
     }
 
+    /** This data structure stores the transitions from one task type to another **/
     protected static class TaskMDPTransition {
 
-        public ObjectInstance taskObject;
+        public int task;
         public double p;
 
-        public TaskMDPTransition(ObjectInstance taskObject, double p) {
-            this.taskObject = taskObject;
+        public TaskMDPTransition(int task, double p) {
+            this.task = task;
             this.p = p;
         }
     }
 
+
+    /** This data structure stores a pair of integers for task switching probabilities **/
     protected static class IntegerPair {
         public int a;
         public int b;
@@ -434,14 +490,12 @@ public class GLTLCompiler implements DomainGenerator {
                     TransitionQuery var = new TransitionQuery();
                     var.symbolMap.put(2, dependencies);
                     List<TaskMDPTransition> succeed = new ArrayList<>();
-                    ObjectInstance o = new ObjectInstance(domain.getObjectClass(CLASSSPEC), CLASSSPEC);
-                    o.setValue(ATTSPEC, 1);
+                    int o =  1;
                     succeed.add(new TaskMDPTransition(o, 1.0));
                     var.transitions.put(new IntegerPair(2, 1), succeed);
 
                     List<TaskMDPTransition> fail = new ArrayList<>();
-                    ObjectInstance fo = new ObjectInstance(domain.getObjectClass(CLASSSPEC), CLASSSPEC);
-                    fo.setValue(ATTSPEC, 0);
+                    int fo = 0;
                     fail.add(new TaskMDPTransition(fo, 1.0));
                     var.transitions.put(new IntegerPair(2, 0), fail);
                     return var;
@@ -491,16 +545,14 @@ public class GLTLCompiler implements DomainGenerator {
             for (Map.Entry<IntegerPair, List<TaskMDPTransition>> e : this.transitions.entrySet()) {
                 List<TaskMDPTransition> negatedTransitions = new ArrayList<TaskMDPTransition>(e.getValue().size());
                 for (TaskMDPTransition trans : e.getValue()) {
-                    if (trans.taskObject.getIntValForAttribute(ATTSPEC) == 0) {
-                        ObjectInstance newtrans = trans.taskObject.copy();
-                        newtrans.setValue(ATTSPEC, 1);
+                    if (trans.task == 0) {
+                        int newtrans = 1;
                         negatedTransitions.add(new TaskMDPTransition(newtrans, trans.p));
-                    } else if (trans.taskObject.getIntValForAttribute(ATTSPEC) == 1) {
-                        ObjectInstance newtrans = trans.taskObject.copy();
-                        newtrans.setValue(ATTSPEC, 0);
+                    } else if (trans.task == 1) {
+                        int newtrans = 0;
                         negatedTransitions.add(new TaskMDPTransition(newtrans, trans.p));
                     } else {
-                        negatedTransitions.add(new TaskMDPTransition(trans.taskObject.copy(), trans.p));
+                        negatedTransitions.add(new TaskMDPTransition(trans.task, trans.p));
                     }
                 }
                 negated.transitions.put(e.getKey(), negatedTransitions);
@@ -543,24 +595,23 @@ public class GLTLCompiler implements DomainGenerator {
 
                 // construct new destinations
                 for (TaskMDPTransition trans : e.getValue()) {
-                    int olddest = trans.taskObject.getIntValForAttribute(ATTSPEC);
+                    int olddest = trans.task;
                     if (olddest == 1) {
-                        ObjectInstance newtrans = trans.taskObject.copy();
+                        int newtrans = Integer.valueOf(trans.task);
                         constructedTransitions1.add(new TaskMDPTransition(newtrans, trans.p));
                         constructedTransitions2.add(new TaskMDPTransition(newtrans, trans.p));
                     } else if (olddest == 0) {
-                        ObjectInstance newtransrestart = trans.taskObject.copy();
-                        ObjectInstance newtransfail = trans.taskObject.copy();
-                        ObjectInstance newtransexpire = trans.taskObject.copy();
-                        newtransrestart.setValue(ATTSPEC, 2);
-                        newtransexpire.setValue(ATTSPEC, 2 + baseline);
+                        int newtransrestart = 2;
+                        int newtransfail = Integer.valueOf(trans.task);
+                        int newtransexpire = 2 + baseline;
+//                        newtransrestart.setValue(ATTSPEC, 2);
+//                        newtransexpire.setValue(ATTSPEC, 2 + baseline);
                         constructedTransitions1.add(new TaskMDPTransition(newtransrestart, trans.p * discount));
                         constructedTransitions1.add(new TaskMDPTransition(newtransexpire, trans.p * (1.0 - discount)));
                         constructedTransitions2.add(new TaskMDPTransition(newtransfail, trans.p));
                     } else {
-                        ObjectInstance newtrans1 = trans.taskObject.copy();
-                        ObjectInstance newtrans2 = trans.taskObject.copy();
-                        newtrans2.setValue(ATTSPEC, olddest + baseline);
+                        int newtrans1 = Integer.valueOf(trans.task);
+                        int newtrans2 = olddest + baseline;
                         constructedTransitions1.add(new TaskMDPTransition(newtrans1, trans.p * discount));
                         constructedTransitions1.add(new TaskMDPTransition(newtrans2, trans.p * (1.0 - discount)));
                         constructedTransitions2.add(new TaskMDPTransition(newtrans2, trans.p));
@@ -592,8 +643,8 @@ public class GLTLCompiler implements DomainGenerator {
                             int actionlabel2 = e2.getKey().b;
                             double prob1 = trans1.p;
                             double prob2 = trans2.p;
-                            int to1 = trans1.taskObject.getIntValForAttribute(ATTSPEC);
-                            int to2 = trans2.taskObject.getIntValForAttribute(ATTSPEC);
+                            int to1 = trans1.task;
+                            int to2 = trans2.task;
 
                             // configure the combined transition  for the new machine
                             int from = until_combine(from1, from2, baseline);
@@ -613,15 +664,12 @@ public class GLTLCompiler implements DomainGenerator {
 //							System.out.println(from1 + "->" + to1 + ", " + from2 + "->" + to2 + " => " + from + "->" + to);
 
                             if (to > 1) { // not terminal
-                                ObjectInstance trans = trans1.taskObject.copy();
-                                trans.setValue(ATTSPEC, to);
+                                int trans = Integer.valueOf(to);
                                 currentlist.add(new TaskMDPTransition(trans, prob*discount));
-                                ObjectInstance transfail = trans1.taskObject.copy();
-                                transfail.setValue(ATTSPEC, 0);
+                                int transfail = 0;
                                 currentlist.add(new TaskMDPTransition(transfail, prob*(1.0-discount)));
                             } else { // terminal
-                                ObjectInstance transend = trans1.taskObject.copy();
-                                transend.setValue(ATTSPEC, to);
+                                int transend = Integer.valueOf(to);
                                 currentlist.add(new TaskMDPTransition(transend, prob));
                             }
                             constructed.transitions.put(new IntegerPair(from, actionlabel), currentlist);
@@ -651,20 +699,18 @@ public class GLTLCompiler implements DomainGenerator {
 
                 // construct new destinations
                 for (TaskMDPTransition trans : e.getValue()) {
-                    int olddest = trans.taskObject.getIntValForAttribute(ATTSPEC);
+                    int olddest = Integer.valueOf(trans.task);
                     if (olddest == 1) {
-                        ObjectInstance newtrans = trans.taskObject.copy();
+                        int newtrans = Integer.valueOf(trans.task);
                         constructedTransitions.add(new TaskMDPTransition(newtrans, trans.p));
                     } else if (olddest == 0) {
-                        ObjectInstance newtransrestart = trans.taskObject.copy();
-                        ObjectInstance newtransfail = trans.taskObject.copy();
-                        newtransrestart.setValue(ATTSPEC, 2);
+                        int newtransrestart = 2;
+                        int newtransfail = Integer.valueOf(trans.task);
                         constructedTransitions.add(new TaskMDPTransition(newtransrestart, trans.p * discount));
                         constructedTransitions.add(new TaskMDPTransition(newtransfail, trans.p * (1.0 - discount)));
                     } else {
-                        ObjectInstance newtranscont = trans.taskObject.copy();
-                        ObjectInstance newtransexpire = trans.taskObject.copy();
-                        newtransexpire.setValue(ATTSPEC, 0); // modification
+                        int newtranscont = Integer.valueOf(trans.task);
+                        int newtransexpire = 0; // modification
                         constructedTransitions.add(new TaskMDPTransition(newtranscont, trans.p * discount));
                         constructedTransitions.add(new TaskMDPTransition(newtransexpire, trans.p * (1.0 - discount)));
                     }
@@ -693,8 +739,8 @@ public class GLTLCompiler implements DomainGenerator {
                             int actionlabel2 = e2.getKey().b;
                             double prob1 = trans1.p;
                             double prob2 = trans2.p;
-                            int to1 = trans1.taskObject.getIntValForAttribute(ATTSPEC);
-                            int to2 = trans2.taskObject.getIntValForAttribute(ATTSPEC);
+                            int to1 = Integer.valueOf(trans1.task);
+                            int to2 = Integer.valueOf(trans2.task);
 
                             // configure the combined transition  for the new machine
                             int from = and_combine(from1, from2, baseline);
@@ -711,8 +757,7 @@ public class GLTLCompiler implements DomainGenerator {
 //							System.out.println(from + "->" + to + " " + actionlabel + " " + currentlist);
 //							System.out.println(from1 + "->" + to1 + ", " + from2 + "->" + to2 + " => " + from + "->" + to);
 
-                            ObjectInstance trans = trans1.taskObject.copy();
-                            trans.setValue(ATTSPEC, to);
+                            int trans = Integer.valueOf(to);
                             currentlist.add(new TaskMDPTransition(trans, prob));
                             constructed.transitions.put(new IntegerPair(from, actionlabel), currentlist);
 
@@ -736,7 +781,7 @@ public class GLTLCompiler implements DomainGenerator {
                     int actionlabel = e2.getKey().b;
                     double prob = trans2.p;
                     int to1 = 1;
-                    int to2 = trans2.taskObject.getIntValForAttribute(ATTSPEC);
+                    int to2 = Integer.valueOf(trans2.task);
 
                     // configure the combined transition  for the new machine
                     int from = and_combine(from1, from2, baseline);
@@ -749,8 +794,7 @@ public class GLTLCompiler implements DomainGenerator {
 //							System.out.println(from + "->" + to + " " + actionlabel + " " + currentlist);
 //					System.out.println(from1 + "->" + to1 + ", " + from2 + "->" + to2 + " => " + from + "->" + to);
 
-                    ObjectInstance trans = trans2.taskObject.copy();
-                    trans.setValue(ATTSPEC, to);
+                    int trans = Integer.valueOf(to);
                     currentlist.add(new TaskMDPTransition(trans, prob));
                     constructed.transitions.put(new IntegerPair(from, actionlabel), currentlist);
 
@@ -770,7 +814,7 @@ public class GLTLCompiler implements DomainGenerator {
                     int actionlabel = e1.getKey().b;
                     double prob = trans1.p;
                     int to2 = 1;
-                    int to1 = trans1.taskObject.getIntValForAttribute(ATTSPEC);
+                    int to1 = Integer.valueOf(trans1.task);
 
                     // configure the combined transition  for the new machine
                     int from = and_combine(from1, from2, baseline);
@@ -783,8 +827,7 @@ public class GLTLCompiler implements DomainGenerator {
 //							System.out.println(from + "->" + to + " " + actionlabel + " " + currentlist);
 //					System.out.println(from1 + "->" + to1 + ", " + from2 + "->" + to2 + " => " + from + "->" + to);
 
-                    ObjectInstance trans = trans1.taskObject.copy();
-                    trans.setValue(ATTSPEC, to);
+                    int trans = Integer.valueOf( to);
                     currentlist.add(new TaskMDPTransition(trans, prob));
                     constructed.transitions.put(new IntegerPair(from, actionlabel), currentlist);
 
