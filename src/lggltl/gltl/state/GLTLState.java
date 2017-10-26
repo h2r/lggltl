@@ -1,10 +1,13 @@
 package lggltl.gltl.state;
 
 import burlap.mdp.core.oo.state.MutableOOState;
+import burlap.mdp.core.oo.state.OOState;
 import burlap.mdp.core.oo.state.ObjectInstance;
 import burlap.mdp.core.state.MutableState;
 import burlap.mdp.core.state.State;
+import lggltl.gltl.GLTLCompiler;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -15,15 +18,16 @@ import java.util.List;
 public class GLTLState implements MutableOOState {
 
     public int spec;
+    public String StateType = "type";
 
-    public State envState;
+    public OOState envState;
 
-    public GLTLState(State envState){
+    public GLTLState(OOState envState){
         this.envState = envState;
         this.spec = 2;
     }
 
-    public GLTLState(State envState, int spec){
+    public GLTLState(OOState envState, int spec){
         this.envState = envState;
         this.spec = spec;
     }
@@ -62,7 +66,10 @@ public class GLTLState implements MutableOOState {
 
     @Override
     public List<ObjectInstance> objects() {
-        throw new RuntimeException("Cannot fetch objects from GLTLState.");
+        List<ObjectInstance> objects = new ArrayList<>();
+        objects = this.envState.objects();
+        objects.add(new PseudoObject(GLTLCompiler.CLASSSPEC, this.spec));
+        return objects;
     }
 
     @Override
@@ -87,6 +94,6 @@ public class GLTLState implements MutableOOState {
 
     @Override
     public GLTLState copy() {
-        return new GLTLState(envState.copy(), Integer.valueOf(spec));
+        return new GLTLState((OOState)envState.copy(), Integer.valueOf(spec));
     }
 }

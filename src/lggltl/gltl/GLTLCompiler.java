@@ -119,7 +119,8 @@ public class GLTLCompiler implements DomainGenerator {
         System.out.println("=========");
 
         for (ActionType a : this.environmentDomain.getActionTypes()) {
-            new CompiledActionType(a, domain, this.formula, this.symbolEvaluator, transitionQuery);
+            domain.addActionType(new CompiledActionType(a, domain,
+                    this.formula, this.symbolEvaluator, transitionQuery));
         }
 
         return domain;
@@ -179,7 +180,7 @@ public class GLTLCompiler implements DomainGenerator {
             this.formula = formula;
             this.symbolEvaluator = symbolEvaluator;
             this.transitions = transitions;
-            this.model = (FullStateModel)domain.getModel();
+            this.model = (FullStateModel)((FactoredModel)domain.getModel()).getStateModel();
         }
 
         public SymbolEvaluator getSymbolEvaluator() {

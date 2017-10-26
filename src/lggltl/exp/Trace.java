@@ -12,6 +12,9 @@ import burlap.mdp.core.oo.propositional.PropositionalFunction;
 import burlap.mdp.core.oo.state.OOState;
 import burlap.mdp.core.state.State;
 import burlap.mdp.singleagent.SADomain;
+import burlap.mdp.singleagent.environment.Environment;
+import burlap.mdp.singleagent.environment.SimulatedEnvironment;
+import burlap.mdp.singleagent.model.FactoredModel;
 import burlap.mdp.singleagent.model.RewardFunction;
 import burlap.mdp.singleagent.oo.OOSADomain;
 import burlap.statehashing.HashableStateFactory;
@@ -78,7 +81,9 @@ public class Trace {
         Planner planner = new ValueIteration((SADomain) compiledDomain, 1.0, hashingFactory, 0.0000001, 20000);
         Policy p = planner.planFromState(initialCompiledState);
 
-        Episode ea = PolicyUtils.rollout(p, initialCompiledState, ((SADomain) compiledDomain).getModel());
+        Environment env = new SimulatedEnvironment((SADomain)compiledDomain,initialCompiledState);
+
+        Episode ea = PolicyUtils.rollout(p, env);
 
         String yamlOut = ea.serialize();
         System.out.println(yamlOut);
