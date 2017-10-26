@@ -56,12 +56,16 @@ public class GLTLState implements MutableOOState {
     @Override
     public int numObjects() {
         //TODO: one object is the spec and another is the base state?? Do not think we will need this method!
-        return 2;
+        return 1+envState.numObjects();
     }
 
     @Override
     public ObjectInstance object(String s) {
-        throw new RuntimeException("Cannot fetch objects from GLTLState.");
+        if(s.equals(GLTLCompiler.CLASSSPEC)){
+            return new PseudoObject(GLTLCompiler.CLASSSPEC, this.spec);
+
+        }
+        else return envState.object(s);
     }
 
     @Override
@@ -74,7 +78,12 @@ public class GLTLState implements MutableOOState {
 
     @Override
     public List<ObjectInstance> objectsOfClass(String s) {
-        throw new RuntimeException("Cannot fetch objects from GLTLState.");
+        if(s.equals(GLTLCompiler.CLASSSPEC)){
+            List<ObjectInstance> objects = new ArrayList<>();
+            objects.add(new PseudoObject(GLTLCompiler.CLASSSPEC, this.spec));
+            return objects;
+        }
+        else return envState.objectsOfClass(s);
     }
 
     @Override
@@ -96,4 +105,26 @@ public class GLTLState implements MutableOOState {
     public GLTLState copy() {
         return new GLTLState((OOState)envState.copy(), Integer.valueOf(spec));
     }
+
+    @Override
+    public boolean equals(Object o){
+        // self check
+        if (this == o)
+            return true;
+        // null check
+        if (o == null)
+            return false;
+        // type check and cast
+        if (getClass() != o.getClass())
+            return false;
+        GLTLState gs = (GLTLState) o;
+        // field comparison
+        return this.spec==gs.spec && this.envState.equals(gs.envState);
+    }
+
+    @Override
+    public int hashCode(){
+        return (this.spec +"").hashCode() + this.envState.hashCode();
+    }
+
 }
