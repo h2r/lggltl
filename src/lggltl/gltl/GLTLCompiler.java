@@ -1,16 +1,12 @@
 package lggltl.gltl;
 
-import burlap.debugtools.RandomFactory;
 import burlap.mdp.auxiliary.DomainGenerator;
 import burlap.mdp.core.Domain;
-import burlap.mdp.core.StateTransitionProb;
 import burlap.mdp.core.TerminalFunction;
 import burlap.mdp.core.action.Action;
 import burlap.mdp.core.action.ActionType;
-import burlap.mdp.core.oo.propositional.PropositionalFunction;
-import burlap.mdp.core.oo.state.MutableOOState;
+import burlap.mdp.core.oo.propositional.GroundedProp;
 import burlap.mdp.core.oo.state.OOState;
-import burlap.mdp.core.oo.state.ObjectInstance;
 import burlap.mdp.core.state.State;
 import burlap.mdp.singleagent.model.FactoredModel;
 import burlap.mdp.singleagent.model.RewardFunction;
@@ -52,7 +48,7 @@ public class GLTLCompiler implements DomainGenerator {
     protected SymbolEvaluator symbolEvaluator;
 
 
-    public GLTLCompiler(String formula, Map<String, PropositionalFunction> symbolMap, OOSADomain environmentDomain) {
+    public GLTLCompiler(String formula, Map<String, GroundedProp> symbolMap, OOSADomain environmentDomain) {
         this.formula = formula;
         this.symbolEvaluator = new SymbolEvaluator(symbolMap);
         this.environmentDomain = environmentDomain;
@@ -62,7 +58,7 @@ public class GLTLCompiler implements DomainGenerator {
         return this.formula;
     }
 
-    public void setFormula(String formula, Map<String, PropositionalFunction> symbolMap) {
+    public void setFormula(String formula, Map<String, GroundedProp> symbolMap) {
         this.formula = formula;
         this.symbolEvaluator = new SymbolEvaluator(symbolMap);
     }
@@ -382,26 +378,26 @@ public class GLTLCompiler implements DomainGenerator {
 
     public static class SymbolEvaluator {
 
-        protected Map<String, PropositionalFunction> symbolMapping;
+        protected Map<String, GroundedProp> symbolMapping;
 
-        public SymbolEvaluator(Map<String, PropositionalFunction> symbolMapping) {
+        public SymbolEvaluator(Map<String, GroundedProp> symbolMapping) {
             this.symbolMapping = symbolMapping;
         }
 
-        public Map<String, PropositionalFunction> getSymbolMapping() {
+        public Map<String, GroundedProp> getSymbolMapping() {
             return symbolMapping;
         }
 
-        public void setSymbolMapping(Map<String, PropositionalFunction> symbolMapping) {
+        public void setSymbolMapping(Map<String, GroundedProp> symbolMapping) {
             this.symbolMapping = symbolMapping;
         }
 
-        public boolean eval(String symbol, OOState s, String... params) {
-            PropositionalFunction pf = this.symbolMapping.get(symbol);
-            if (pf == null) {
+        public boolean eval(String symbol, OOState s) {
+            GroundedProp gp = this.symbolMapping.get(symbol);
+            if (gp == null) {
                 throw new RuntimeException("Symbol " + symbol + " cannot be evaluated because it is undefined");
             }
-            return pf.isTrue(s, params);
+            return gp.isTrue(s);
         }
     }
 
