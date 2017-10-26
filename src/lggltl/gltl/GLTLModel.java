@@ -3,6 +3,7 @@ package lggltl.gltl;
 import burlap.mdp.core.StateTransitionProb;
 import burlap.mdp.core.action.Action;
 import burlap.mdp.core.action.ActionType;
+import burlap.mdp.core.oo.state.OOState;
 import burlap.mdp.core.state.State;
 import burlap.mdp.singleagent.model.statemodel.FullStateModel;
 import lggltl.gltl.state.GLTLState;
@@ -26,7 +27,7 @@ public class GLTLModel implements FullStateModel {
 
         GLTLCompiler.CompiledAction ca = (GLTLCompiler.CompiledAction)action;
         //get the environment mdp transition dynamics
-        List<StateTransitionProb> environmentTPs = this.sourceModel.stateTransitions(state, ca.getSourceAction());
+        List<StateTransitionProb> environmentTPs = this.sourceModel.stateTransitions(((GLTLState)state).envState, ca.getSourceAction());
 
         //reserve space for the joint task-environment mdp transitions
         List<StateTransitionProb> jointTPs = new ArrayList<StateTransitionProb>(environmentTPs.size() * 2);
@@ -39,12 +40,12 @@ public class GLTLModel implements FullStateModel {
 //				System.out.println("===>" + taskTPs.size());
             double taskSum = 0.;
             for (GLTLCompiler.TaskMDPTransition ttp : taskTPs) {
-                GLTLState ns = (GLTLState) etp.s.copy();
+                GLTLState ns = new GLTLState((OOState)etp.s.copy(), ttp.task);
 
                 //remove the old task spec
 //                ns.removeObject(ns.getFirstObjectOfClass(CLASSSPEC).getName());
                 //set the new task spec
-                ns.spec = ttp.task;
+//                ns.spec = ttp.task;
 //                ns.addObject(ttp.taskObject);
                 double p = etp.p * ttp.p;
                 StateTransitionProb jtp = new StateTransitionProb(ns, p);

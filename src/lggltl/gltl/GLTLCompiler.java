@@ -99,7 +99,7 @@ public class GLTLCompiler implements DomainGenerator {
 
         domain.addStateClass(CLASSSPEC, GLTLState.class);
 
-        FactoredModel model = new FactoredModel(GLTLModel(this.environmentDomain), this.generateRewardFunction(), this.generateTerminalFunction());
+        FactoredModel model = new FactoredModel(new GLTLModel((FullStateModel)((FactoredModel)this.environmentDomain.getModel()).getStateModel()), this.generateRewardFunction(), this.generateTerminalFunction());
 
 
         domain.setModel(model);
@@ -127,10 +127,6 @@ public class GLTLCompiler implements DomainGenerator {
 
     }
 
-    private SampleStateModel GLTLModel(OOSADomain environmentDomain) {
-        //TODO: need to make a model
-        return null;
-    }
 
     public RewardFunction generateRewardFunction() {
 
