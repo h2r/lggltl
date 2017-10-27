@@ -2,6 +2,7 @@ package lggltl.gltl.state;
 
 import burlap.mdp.core.oo.state.MutableOOState;
 import burlap.mdp.core.oo.state.OOState;
+import burlap.mdp.core.oo.state.OOStateUtilities;
 import burlap.mdp.core.oo.state.ObjectInstance;
 import burlap.mdp.core.state.MutableState;
 import burlap.mdp.core.state.State;
@@ -125,6 +126,11 @@ public class GLTLState implements MutableOOState {
     @Override
     public int hashCode(){
         return (this.spec +"").hashCode() + this.envState.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return OOStateUtilities.ooStateToString(this);
     }
 
 }
