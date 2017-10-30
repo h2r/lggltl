@@ -13,6 +13,9 @@ import burlap.domain.singleagent.gridworld.state.GridLocation;
 import burlap.domain.singleagent.gridworld.state.GridWorldState;
 import burlap.mdp.core.Domain;
 import burlap.mdp.core.TerminalFunction;
+import burlap.mdp.core.action.Action;
+import burlap.mdp.core.action.ActionType;
+import burlap.mdp.core.oo.propositional.GroundedProp;
 import burlap.mdp.core.oo.propositional.PropositionalFunction;
 import burlap.mdp.core.oo.state.OOState;
 import burlap.mdp.core.state.State;
@@ -24,6 +27,7 @@ import burlap.mdp.singleagent.oo.OOSADomain;
 import burlap.statehashing.simple.SimpleHashableStateFactory;
 import burlap.visualizer.Visualizer;
 import lggltl.gltl.GLTLCompiler;
+import lggltl.gltl.state.GLTLState;
 
 import java.util.*;
 import java.awt.Graphics2D;
@@ -54,8 +58,8 @@ public class TraceOriginal {
 //		formula = "U6!BR"; // avoid blue en route to red
         grid = 'R'; // R N
 //		 formula = "U6!BB"; // avoid blue en route to blue
-        formula = "&G4!BF4R"; // eventually red and always not blue (waits)
-//		formula = "F3B"; // go to blue
+//        formula = "&G4!BF4R"; // eventually red and always not blue (waits)
+		formula = "F3B"; // go to blue
 //		formula = "F2R"; // go to red
 //		formula = "G3!B"; // avoid blue
 
@@ -234,16 +238,19 @@ public class TraceOriginal {
         }
 
         //add propositional function for checking if the agent is in an orange or blue cell
-        PropositionalFunction inOrange = new InOrange(PFINORANGE, String []);
-        new InBlue(envDomain);
-        new NotInBlue(envDomain);
+        PropositionalFunction inOrange = new InOrange(PFINORANGE, new String [] {});
+        PropositionalFunction inBlue = new InBlue(PFINBLUE, new String [] {});
+        PropositionalFunction notInBlue = new NotInBlue(PFNOTINBLUE, new String [] {});
+
+//        new InBlue(envDomain);
+//        new NotInBlue(envDomain);
 
         //let our GLTL symbol "o" correspond to evaluating whether the agent is in an orange location (a parameterless propositional function)
         // and "b" be whether the agent is in a blue location
-        Map<String, PropositionalFunction> symbolMap = new HashMap<String, PropositionalFunction>(1);
+        Map<String, GroundedProp> symbolMap = new HashMap<String, GroundedProp>(1);
         //System.out.println(envDomain.getPropFunctions());
-        symbolMap.put("R", envDomain.propFunction(PFINORANGE));
-        symbolMap.put("B", envDomain.propFunction(PFINBLUE));
+        symbolMap.put("R", new GroundedProp(inOrange, new String[]{}));
+        symbolMap.put("B", new GroundedProp(inBlue, new String[]{}));
         // symbolMap.put("R", envDomain.getPropFunction(PFNOTINBLUE));
         //System.out.println(symbolMap.toString());
 
@@ -255,6 +262,8 @@ public class TraceOriginal {
 //        TerminalFunction tf = compiler.generateTerminalFunction();
 
         State initialCompiledState = compiler.addInitialTaskStateToEnvironmentState(s);
+        List<ActionType> atTypes = compiledDomain.getActionTypes();
+
         // System.out.println(initialCompiledState.getCompleteStateDescription());
 
         //begin planning in our compiled domain
@@ -267,8 +276,37 @@ public class TraceOriginal {
         Policy p = new GreedyQPolicy(vi);
         Episode ea = PolicyUtils.rollout(p,env);
 
+        for(ActionType at:atTypes){
+            List<Action> actions = at.allApplicableActions(initialCompiledState);
+            for(Action a:actions){
+                System.out.println(a.actionName());
+            }
+        }
 
-//            Visualizer v = GridWorldVisualizer.getVisualizer(gwd.getMap());
+//        for(int count = 0;count<ea.numActions();count++){
+//            GridWorldState gs = (GridWorldState)((GLTLState)ea.stateSequence.get(count)).envState;
+//
+//            System.out.println(gs.toString() + "////////////////" + ea.actionSequence.get(count));
+//            System.out.println("_____________________");
+//        }
+
+        Episode gw_episode= new Episode((GridWorldState)((GLTLState)ea.stateSequence.get(0)).envState);
+
+        for(int count = 0;count<ea.numActions();count++){
+//            GridWorldState gs = (GridWorldState)((GLTLState)ea.stateSequence.get(count)).envState;
+            GridWorldState gsNew = (GridWorldState)((GLTLState)ea.stateSequence.get(count+1)).envState;
+
+
+//            EnvironmentOutcome eo = new EnvironmentOutcome(gs,ea.actionSequence.get(count),gsNew,0,false);
+            gw_episode.transition(ea.actionSequence.get(count),gsNew,0);
+//            System.out.println("_____________________");
+        }
+
+
+
+        System.out.println("num actions: " + ea.numActions());
+
+            Visualizer v = GridWorldVisualizer.getVisualizer(gwd.getMap());
 //        StaticPainter sp = new StaticPainter() {
 //            @Override
 //            public void paint(Graphics2D g2, State s, float cWidth, float cHeight) {
@@ -279,12 +317,14 @@ public class TraceOriginal {
 //            }
 //        };
 //        v.addStaticPainter(sp);
-
-//		new EpisodeSequenceVisualizer(v, compiledDomain, episodes);
+        List<Episode> episodes = new ArrayList<>();
+        episodes.add(gw_episode);
+        new EpisodeSequenceVisualizer(v,envDomain,episodes);
+//		new EpisodeSequenceVisualizer(v, gwd, episodes);
 //
 //		//create episode sequence visualizer
 //		Visualizer v = GridWorldVisualizer.getVisualizer(gwd.getMap());
-        EpisodeSequenceVisualizer evis = new EpisodeSequenceVisualizer(v, compiledDomain, Arrays.asList(ea));
+//        EpisodeSequenceVisualizer evis = new EpisodeSequenceVisualizer(v, compiledDomain, Arrays.asList(ea));
 ////		EpisodeRenderer evis = new EpisodeRenderer(v, compiledDomain, Arrays.asList(ea));
 
     }

@@ -118,7 +118,9 @@ public class GLTLCompiler implements DomainGenerator {
         }
         System.out.println("=========");
 
-        for (ActionType a : this.environmentDomain.getActionTypes()) {
+        List<ActionType> actionTypes = this.environmentDomain.getActionTypes();
+
+        for (ActionType a : actionTypes) {
             domain.addActionType(new CompiledActionType(a, domain,
                     this.formula, this.symbolEvaluator, transitionQuery));
         }
@@ -310,7 +312,7 @@ public class GLTLCompiler implements DomainGenerator {
 
         @Override
         public String typeName() {
-            return ACTION_COMPILED;
+            return ACTION_COMPILED +  srcActionType.toString();
         }
 
         @Override
@@ -336,7 +338,7 @@ public class GLTLCompiler implements DomainGenerator {
 
         @Override
         public String actionName() {
-            return null;
+            return compiledActionName+"_"+srcAction.actionName();
         }
 
         @Override
