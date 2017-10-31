@@ -18,7 +18,7 @@ import lggltl.gltl.state.GLTLState;
 import java.util.*;
 
 /**
- * @author James MacGlashan, reworked by Michael Littman, rereworked by Dilip Arumugam rereworked by nakul gopalan
+ * @author James MacGlashan, reworked by Michael Littman, rereworked by Dilip Arumugam, rerereworked by nakul gopalan
  */
 
 //TODO: the env. state needs to be an OOState for this domain because Prop functions are OO that seems stupid!!
@@ -245,6 +245,7 @@ public class GLTLCompiler implements DomainGenerator {
 
             //TODO: can we compare this to a point in the paper. IDK what is going on here!!!!
             int actionlabel = 0;
+//            System.out.println(curStateSpec + "\t" + dependencies);
             for (String symbolName : dependencies) {
                 actionlabel = 2 * actionlabel + ((this.symbolEvaluator.eval(symbolName, (OOState) nextEnvState)) ? 1 : 0);
             }
@@ -478,10 +479,25 @@ public class GLTLCompiler implements DomainGenerator {
         }
 
         public List<String> symbolDependencies(int taskstate) {
+            //TODO: Marking the change here
+//            if(symbolMap.containsKey(taskstate)){
+//                return symbolMap.get(taskstate);
+//            }
+//            else{
+//                return new ArrayList<>();
+//            }
             return symbolMap.get(taskstate);
         }
 
         public List<TaskMDPTransition> nextTaskStateTransitions(int taskstate, int actionlabel) {
+            //TODO: Marking the change here
+//            IntegerPair ip = new IntegerPair(taskstate, actionlabel);
+//            if(transitions.containsKey(ip)){
+//                return transitions.get(ip);
+//            }
+//            else{
+//                return new ArrayList<>();
+//            }
             return transitions.get(new IntegerPair(taskstate, actionlabel));
         }
 

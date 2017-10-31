@@ -24,6 +24,7 @@ public class GLTLModel implements FullStateModel {
     @Override
     public List<StateTransitionProb> stateTransitions(State state, Action action) {
 
+//        System.out.println("Querying state transitions for " + state + "\t" + action);
 
         CompiledAction ca = (CompiledAction)action;
         //get the environment mdp transition dynamics
