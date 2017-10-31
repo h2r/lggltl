@@ -291,7 +291,7 @@ public class GLTLCompiler implements DomainGenerator {
 
         @Override
         public List<Action> allApplicableActions(State s) {
-            List<Action> srcGas = this.srcActionType.allApplicableActions(s);
+            List<Action> srcGas = this.srcActionType.allApplicableActions(((GLTLState) s).getBaseState());
             List<Action> targetGas = new ArrayList<Action>(srcGas.size());
             for (Action ga : srcGas) {
                 targetGas.add(new CompiledAction(ga, this));
