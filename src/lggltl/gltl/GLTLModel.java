@@ -25,7 +25,7 @@ public class GLTLModel implements FullStateModel {
     public List<StateTransitionProb> stateTransitions(State state, Action action) {
 
 
-        GLTLCompiler.CompiledAction ca = (GLTLCompiler.CompiledAction)action;
+        CompiledAction ca = (CompiledAction)action;
         //get the environment mdp transition dynamics
         List<StateTransitionProb> environmentTPs = this.sourceModel.stateTransitions(((GLTLState)state).envState, ca.getSourceAction());
 

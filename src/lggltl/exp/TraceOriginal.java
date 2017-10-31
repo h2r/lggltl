@@ -5,6 +5,7 @@ import burlap.behavior.policy.Policy;
 import burlap.behavior.policy.PolicyUtils;
 import burlap.behavior.singleagent.Episode;
 import burlap.behavior.singleagent.auxiliary.EpisodeSequenceVisualizer;
+import burlap.behavior.singleagent.auxiliary.StateEnumerator;
 import burlap.behavior.singleagent.planning.stochastic.valueiteration.ValueIteration;
 import burlap.domain.singleagent.gridworld.GridWorldDomain;
 import burlap.domain.singleagent.gridworld.GridWorldVisualizer;
@@ -59,7 +60,7 @@ public class TraceOriginal {
         grid = 'R'; // R N
 //		 formula = "U6!BB"; // avoid blue en route to blue
 //        formula = "&G4!BF4R"; // eventually red and always not blue (waits)
-		formula = "F3B"; // go to blue
+//		formula = "F3B"; // go to blue
 //		formula = "F2R"; // go to red
 //		formula = "G3!B"; // avoid blue
 
@@ -67,7 +68,7 @@ public class TraceOriginal {
 //		formula = "&F3RG1F1B"; // hallway!
 
 //		grid = 'R';
-//		formula = "U2!BR"; // avoid blue en route to red
+		formula = "U4!BR"; // avoid blue en route to red
 //		formula = "G2!B";
 //		formula = "G4F4&BF4R"; // slides
 //		formula = "&F2RG2!B";  // slides
@@ -226,7 +227,7 @@ public class TraceOriginal {
                 //construct our state
                 numLocations = 2; // allocate locations
                 locations = new ArrayList<>();
-                agent = new GridAgent(2,1);
+                agent = new GridAgent(0,0);
                 locations.add(new GridLocation(3,1,0,LOCATIONPREFIX+0));
                 locations.add(new GridLocation(3,2,1,LOCATIONPREFIX+1));
                 s = new GridWorldState(agent,locations);
@@ -276,12 +277,45 @@ public class TraceOriginal {
         Policy p = new GreedyQPolicy(vi);
         Episode ea = PolicyUtils.rollout(p,env);
 
+        StateEnumerator senum = new StateEnumerator(compiledDomain,new SimpleHashableStateFactory());
+
+        senum.findReachableStatesAndEnumerate(initialCompiledState);
+
+
+        System.out.println("print states start");
+//        List<State> states = vi.getAllStates();
+        for(int i=0;i< senum.numStatesEnumerated();i++){
+            State state = senum.getStateForEnumerationId(i);
+            System.out.println("|||||||||||||");
+            System.out.println(stateToStringCompact(state));
+            for(ActionType at:atTypes){
+                List<Action> actions = at.allApplicableActions(state);
+                String str = "";
+                for(Action a:actions){
+                    str +=a.actionName() + " ";
+
+                }
+                System.out.println(str);
+            }
+        }
+        System.out.println("print states end");
         for(ActionType at:atTypes){
             List<Action> actions = at.allApplicableActions(initialCompiledState);
             for(Action a:actions){
                 System.out.println(a.actionName());
             }
         }
+
+        for(ActionType at:atTypes){
+            List<Action> actions = at.allApplicableActions(initialCompiledState);
+            for(Action a:actions){
+                EnvironmentOutcome eo = compiledDomain.getModel().sample(initialCompiledState,a);
+                System.out.println(eo.op.toString());
+                System.out.println("---------------++++++++++++++++-------------------------+++++++");
+            }
+        }
+
+
 
 //        for(int count = 0;count<ea.numActions();count++){
 //            GridWorldState gs = (GridWorldState)((GLTLState)ea.stateSequence.get(count)).envState;
@@ -450,5 +484,23 @@ public class TraceOriginal {
             return true;
         }
 
+    }
+
+    /**
+     * Modified version of burlap.mdp.core.state.StateUtilities.
+     * Returns single-line representation of state, easier to parse.
+     * @param sIn
+     * @return
+     */
+    public static String stateToStringCompact(State sIn){
+        GLTLState s = (GLTLState) sIn;
+        StringBuilder buf = new StringBuilder();
+        //buf.append("{");
+        List<Object> keys = s.envState.variableKeys();
+        for(Object key : keys){
+            buf.append(key.toString()).append(": {").append(s.envState.get(key).toString()).append("} ");
+        }
+        buf.append("spec: "+ s.spec);
+        return buf.toString();
     }
 }

@@ -326,53 +326,6 @@ public class GLTLCompiler implements DomainGenerator {
 
 
     //TODO: the equality and hashcode should check for the environment action too!!
-    public static class CompiledAction implements Action {
-        static Action srcAction;
-        static String compiledActionName = "compiledAction";
-        static CompiledActionType at;
-
-        public CompiledAction(Action srcAction, CompiledActionType at){
-            this.srcAction = srcAction;
-            this.at = at;
-        }
-
-        @Override
-        public String actionName() {
-            return compiledActionName+"_"+srcAction.actionName();
-        }
-
-        @Override
-        public Action copy() {
-            return null;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            CompiledAction that = (CompiledAction) o;
-            return this.srcAction.equals((that).srcAction);
-        }
-
-        public Action getSourceAction(){
-            return this.srcAction;
-        }
-
-        public CompiledActionType getCompiledActionType(){
-            return this.at;
-        }
-
-        @Override
-        public int hashCode() {
-            return compiledActionName.hashCode() + srcAction.hashCode();
-        }
-
-        @Override
-        public String toString() {
-            return this.actionName() + "_" + this.srcAction.actionName();
-        }
-    }
 
 
     public static class SymbolEvaluator {
