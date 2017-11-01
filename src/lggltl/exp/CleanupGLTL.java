@@ -43,8 +43,10 @@ public class CleanupGLTL {
 
         String formula;
 
-        formula = "G4F4&CF1B"; //Always eventually (Green and eventually Blue)
-//        formula = "G4F4&RF4B"; //Always eventually (Red and eventually Blue)
+//        formula = Formulas.ALW_EVENT_BLUE_AND_EVENT_YELLOW;
+//        formula = Formulas.ROTATE_FOUR_ROOMS;
+//        formula = Formulas.EVENT_BLOCK2GREEN_AND_NEVER_BLUE;
+        formula = Formulas.EVENT_BLOCK2GREEN_AND_NEVER_YELLOW;
 
         if (args.length > 0) {
             formula = args[0];
@@ -62,31 +64,15 @@ public class CleanupGLTL {
         dgen.setLockProbability(0.0);
         envDomain = dgen.generateDomain();
 
-        State s = CleanupDomain.getClassicState(true);
+//        State s = CleanupDomain.getClassicState(true);
+        State s = CleanupDomain.getState(true, false, 1, 4);
 
 
-        //let our GLTL symbol "o" correspond to evaluating whether the agent is in an orange location (a parameterless propositional function)
-        // and "b" be whether the agent is in a blue location
-        Map<String, GroundedProp> symbolMap = new HashMap<>(1);
-        //System.out.println(envDomain.getPropFunctions());
-        PropositionalFunction a2r_pf = new CleanupDomain.PF_InRegion(CleanupDomain.PF_AGENT_IN_ROOM,
-                new String[]{CleanupDomain.CLASS_AGENT, CleanupDomain.CLASS_ROOM}, false);
-
-        PropositionalFunction b2r_pf = new CleanupDomain.PF_InRegion(CleanupDomain.PF_BLOCK_IN_ROOM,
-                new String[]{CleanupDomain.CLASS_BLOCK, CleanupDomain.CLASS_ROOM}, false);
-
-
-        GroundedProp gp =  new GroundedProp(a2r_pf, new String[]{"agent0", "room1"});
-        symbolMap.put("C", gp);
-        gp =  new GroundedProp(a2r_pf, new String[]{"agent0", "room0"});
-        symbolMap.put("R", gp);
-        gp =  new GroundedProp(a2r_pf, new String[]{"agent0", "room2"});
-        symbolMap.put("B", gp);
+//        Map<String, GroundedProp> symbolMap = SymbolMaps.CS_SYMBOL_MAP;
+        Map<String, GroundedProp> symbolMap = SymbolMaps.FR_SYMBOL_MAP;
 
         GLTLCompiler compiler = new GLTLCompiler(formula, symbolMap, envDomain);
         Domain compiledDomain = compiler.generateDomain();
-        RewardFunction rf = compiler.generateRewardFunction();
-        TerminalFunction tf = compiler.generateTerminalFunction();
 
         State initialCompiledState = compiler.addInitialTaskStateToEnvironmentState((OOState) s);
         // System.out.println(initialCompiledState.getCompleteStateDescription());
@@ -95,8 +81,9 @@ public class CleanupGLTL {
 
         //begin planning in our compiled domain
 //        Planner planner = new ValueIteration((SADomain) compiledDomain, 1.0, hashingFactory, 0.0000001, 1000);
-        Planner planner = new BoundedRTDP((SADomain) compiledDomain, 1.0, hashingFactory, new ConstantValueFunction(0.0), new ConstantValueFunction(1.0),0.0000001, 1000);
 //        ((ValueIteration) planner).toggleReachabiltiyTerminalStatePruning(true);
+
+        Planner planner = new BoundedRTDP((SADomain) compiledDomain, 1.0, hashingFactory, new ConstantValueFunction(0.0), new ConstantValueFunction(1.0),0.0000001, 1000);
         long startTime = System.nanoTime();
         Policy p = planner.planFromState(initialCompiledState);
         long endTime = System.nanoTime();
@@ -111,17 +98,11 @@ public class CleanupGLTL {
         Episode cw_episode= new Episode(((GLTLState)ea.stateSequence.get(0)).envState);
 
         for(int count = 0;count<ea.numActions();count++){
-//            GridWorldState gs = (GridWorldState)((GLTLState)ea.stateSequence.get(count)).envState;
             CleanupState gsNew = (CleanupState) ((GLTLState)ea.stateSequence.get(count+1)).envState;
-
-
-//            EnvironmentOutcome eo = new EnvironmentOutcome(gs,ea.actionSequence.get(count),gsNew,0,false);
             cw_episode.transition(ea.actionSequence.get(count),gsNew,0);
-//            System.out.println("_____________________");
         }
 
         Visualizer v = CleanupVisualiser.getVisualizer("data/resources/robotImages");
-        //		System.out.println(ea.getState(0).toString());
         new EpisodeSequenceVisualizer(v, envDomain, Arrays.asList(cw_episode));
     }
 }
