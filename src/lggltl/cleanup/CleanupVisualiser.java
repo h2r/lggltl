@@ -141,7 +141,7 @@ public class CleanupVisualiser {
             Color rcol = colorForName(obr.colour);
             float [] hsb = new float[3];
             Color.RGBtoHSB(rcol.getRed(), rcol.getGreen(), rcol.getBlue(), hsb);
-            hsb[1] = 0.4f;
+            hsb[1] = 0.8f*hsb[1];
             rcol = Color.getHSBColor(hsb[0], hsb[1], hsb[2]);
 
             for(int i = left; i <= right; i++){

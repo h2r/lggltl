@@ -84,7 +84,7 @@ public class CleanupDomain implements DomainGenerator {
             "red", "yellow"};
 
     public static final String[] SHAPES = new String[]{"chair", "bag",
-            "backpack", "basket"};
+            "backpack", "basket", "fire"};
 
 
     public static final String[] DIRECTIONS = new String[]{"north", "south", "east", "west"};
@@ -800,7 +800,10 @@ public class CleanupDomain implements DomainGenerator {
             dgen.setLockProbability(0.5);
             OOSADomain domain = dgen.generateDomain();
 
-            State s = CleanupDomain.getClassicState(true);
+//            State s = CleanupDomain.getClassicState(true);
+            State s = new CreateStartStates().getState("2_pink_yellow_green_blue");
+
+//            State s = new CreateStartStates().getState("5_pink_red_yellow_green_red_blue");
 
 			/*ObjectInstance b2 = new ObjectInstance(domain.getObjectClass(CLASSBLOCK), CLASSBLOCK+1);
 		s.addObject(b2);
