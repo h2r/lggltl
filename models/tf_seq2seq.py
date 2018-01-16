@@ -6,7 +6,7 @@ import tensorflow as tf
 import cPickle as pickle
 from tensorflow.contrib import layers
 
-SEED = 5678
+SEED = 1234
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -15,6 +15,7 @@ class Seq2Seq:
         random.seed(SEED)
         self.STOP, self.UNK, self.STOP_ID, self.UNK_ID, self.bsz = "STOP", "UNK", 1, 2, 16
         self.embed_sz, self.rnn_sz, self.init, self.keep_prob = 30, 256, tf.contrib.layers.xavier_initializer(), 0.5
+        self.use_attn = True
 
         # self.train_eval()
         self.cross_val()
@@ -372,7 +373,7 @@ class Seq2Seq:
         batch_size = tf.shape(inp)[0]
         start_tokens = tf.zeros([batch_size], dtype=tf.int64)
         train_output = tf.concat([tf.expand_dims(start_tokens, 1), output], 1)
-        # input_lengths = tf.reduce_sum(tf.to_int32(tf.not_equal(inp, self.STOP_ID)), 1)
+        input_lengths = tf.reduce_sum(tf.to_int32(tf.not_equal(inp, self.STOP_ID)), 1)
         output_lengths = tf.reduce_sum(tf.to_int32(tf.not_equal(train_output, self.STOP_ID)), 1)
         input_embed = layers.embed_sequence(inp, vocab_size=src_vocab_size, embed_dim=embed_dim, scope='src_embed')
         output_embed = layers.embed_sequence(train_output, vocab_size=tar_vocab_size, embed_dim=embed_dim, scope='tar_embed')
@@ -388,12 +389,17 @@ class Seq2Seq:
 
         def decode(helper, scope, reuse=None):
             with tf.variable_scope(scope, reuse=reuse):
-                # attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units=rnn_size, memory=encoder_outputs, memory_sequence_length=input_lengths)
                 cell = tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.GRUCell(num_units=rnn_size), input_keep_prob=self.keep_prob, output_keep_prob=self.keep_prob)
-                # attn_cell = tf.contrib.seq2seq.AttentionWrapper(cell, attention_mechanism, attention_layer_size=rnn_size / 2)
+                if self.use_attn:
+                    attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units=rnn_size, memory=encoder_outputs, memory_sequence_length=input_lengths)
+                    cell = tf.contrib.seq2seq.AttentionWrapper(cell, attention_mechanism, attention_layer_size=rnn_size / 2)
                 out_cell = tf.contrib.rnn.OutputProjectionWrapper(cell, tar_vocab_size, reuse=reuse)
 
-                decoder = tf.contrib.seq2seq.BasicDecoder(cell=out_cell, helper=helper, initial_state=encoder_final_state)
+                if self.use_attn:
+                    decoder = tf.contrib.seq2seq.BasicDecoder(cell=out_cell, helper=helper,
+                                                              initial_state=out_cell.zero_state(dtype=tf.float32, batch_size=batch_size).clone(cell_state=encoder_final_state))
+                else:
+                    decoder = tf.contrib.seq2seq.BasicDecoder(cell=out_cell, helper=helper, initial_state=encoder_final_state)
                 outputs = tf.contrib.seq2seq.dynamic_decode(decoder=decoder, output_time_major=False, impute_finished=True, maximum_iterations=30)
             return outputs[0]
         
