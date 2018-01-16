@@ -6,10 +6,18 @@ from nltk.tokenize import RegexpTokenizer
 MODE = 0  # Use hard labels
 # MODE = 1  # Use soft labels
 
-tar_lookup = {"AvoidRed_Clean.csv": "F & B G ! R",
+tar_lookup = {"AvoidBlue_Clean.csv": "F & C G ! B",
+              "AvoidGreen_Clean.csv": "F & B G ! C",
+              "AvoidRed_Clean.csv": "F & B G ! R",
               "AvoidYellow_Clean.csv": "F & C G ! Y",
               "ThroughBlue_Clean.csv": "F & B F C",
-              "ThroughGreen_Clean.csv": "F & C F B"}
+              "ThroughGreen_Clean.csv": "F & C F B",
+              "EventGreen_Clean.csv": "F C",
+              "EventRed_Clean.csv": "F R",
+              "BlockBlue_Clean.csv": "F BB",
+              "BlockGreen_Clean.csv": "F BC",
+              "BlockBlue_Green_Clean.csv": "F & BB F C",
+              "BlockGreen_Blue_Clean.csv": "F & BC F B"}
 
 
 def main(data_files):
