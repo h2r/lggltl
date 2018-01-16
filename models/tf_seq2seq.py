@@ -6,7 +6,7 @@ import tensorflow as tf
 import cPickle as pickle
 from tensorflow.contrib import layers
 
-SEED = 1234
+SEED = 5678
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -14,7 +14,7 @@ class Seq2Seq:
     def __init__(self):
         random.seed(SEED)
         self.STOP, self.UNK, self.STOP_ID, self.UNK_ID, self.bsz = "STOP", "UNK", 1, 2, 16
-        self.embed_sz, self.rnn_sz, self.init = 30, 256, tf.contrib.layers.xavier_initializer()
+        self.embed_sz, self.rnn_sz, self.init, self.keep_prob = 30, 256, tf.contrib.layers.xavier_initializer(), 0.5
 
         # self.train_eval()
         self.cross_val()
@@ -49,7 +49,7 @@ class Seq2Seq:
             src_sents, tar_sents = srcf.readlines(), tarf.readlines()
         assert len(src_sents) == len(tar_sents)
         z_sents = zip(src_sents, tar_sents)
-        for _ in range(3):
+        for _ in range(10):
             random.shuffle(z_sents)
         for src_sent, tar_sent in z_sents:
             src_temp.write(src_sent)
@@ -60,8 +60,11 @@ class Seq2Seq:
         FLAGS.train_src, FLAGS.train_tar = src_temp.name, tar_temp.name
             
         correct, total = 0, 0
+        print 'Starting {0}-fold cross validation'.format(FLAGS.folds)
         for f in xrange(FLAGS.folds):
+            print 'Running cross validation fold {0}/{1}...'.format(f + 1, FLAGS.folds)
             tf.reset_default_graph()
+            random.seed(SEED)
             tf.set_random_seed(SEED)
 
             self.input_fn, self.feed_fn, self.test_feed_fn, self.ground_truth = self.make_cv_data_fns(f)
@@ -91,7 +94,7 @@ class Seq2Seq:
 
         os.remove(src_temp.name)
         os.remove(tar_temp.name)
-        print '{0}-Fold Cross Validation Accuracy: {1}/{2} = {3}%'.format(FLAGS.folds, correct, total, 100. * float(correct) / float(total))
+        print '{0}-fold Cross Validation Accuracy: {1}/{2} = {3}%'.format(FLAGS.folds, correct, total, 100. * float(correct) / float(total))
 
     def compute_acc(self, zipped):
         correct, total = 0, 0
@@ -247,7 +250,7 @@ class Seq2Seq:
             assert len(src_sents) == len(tar_sents)
             z_sents = zip(src_sents, tar_sents)
             fold_range = range(0, len(z_sents), len(z_sents) / FLAGS.folds)
-            fold_range[-1] = len(z_sents)
+            fold_range.append(len(z_sents))
 
             train_sents = z_sents[:fold_range[fold_index]] + z_sents[fold_range[fold_index + 1]:]
             val_sents = z_sents[fold_range[fold_index]:fold_range[fold_index + 1]]
@@ -376,7 +379,7 @@ class Seq2Seq:
         with tf.variable_scope('tar_embed', reuse=True):
             embeddings = tf.get_variable('embeddings')
 
-        cell = tf.contrib.rnn.GRUCell(num_units=rnn_size)
+        cell = tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.GRUCell(num_units=rnn_size), input_keep_prob=self.keep_prob, output_keep_prob=self.keep_prob)
         encoder_outputs, encoder_final_state = tf.nn.dynamic_rnn(cell, input_embed, dtype=tf.float32)
 
         train_helper = tf.contrib.seq2seq.TrainingHelper(output_embed, output_lengths)
@@ -386,7 +389,7 @@ class Seq2Seq:
         def decode(helper, scope, reuse=None):
             with tf.variable_scope(scope, reuse=reuse):
                 # attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units=rnn_size, memory=encoder_outputs, memory_sequence_length=input_lengths)
-                cell = tf.contrib.rnn.GRUCell(num_units=rnn_size)
+                cell = tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.GRUCell(num_units=rnn_size), input_keep_prob=self.keep_prob, output_keep_prob=self.keep_prob)
                 # attn_cell = tf.contrib.seq2seq.AttentionWrapper(cell, attention_mechanism, attention_layer_size=rnn_size / 2)
                 out_cell = tf.contrib.rnn.OutputProjectionWrapper(cell, tar_vocab_size, reuse=reuse)
 
