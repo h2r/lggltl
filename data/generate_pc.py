@@ -4,7 +4,7 @@ import csv
 from nltk.tokenize import RegexpTokenizer
 
 MODE = 0  # Use hard labels
-# MODE = 1  # Use soft labels
+#MODE = 1  # Use soft labels
 
 tar_lookup = {"AvoidBlue_Clean.csv": "F & C G ! B",
               "AvoidGreen_Clean.csv": "F & B G ! C",
@@ -14,10 +14,15 @@ tar_lookup = {"AvoidBlue_Clean.csv": "F & C G ! B",
               "ThroughGreen_Clean.csv": "F & C F B",
               "EventGreen_Clean.csv": "F C",
               "EventRed_Clean.csv": "F R",
+              "EventRed_EventGreen_Clean.csv": "F & R F C",
               "BlockBlue_Clean.csv": "F BB",
               "BlockGreen_Clean.csv": "F BC",
               "BlockBlue_Green_Clean.csv": "F & BB F C",
-              "BlockGreen_Blue_Clean.csv": "F & BC F B"}
+              "BlockGreen_Blue_Clean.csv": "F & BC F B",
+              "EventRorY_EventGreen_Clean.csv": "F & | R Y F C",
+              "EventRorY_EventBlue_Clean.csv": "F & | R Y F B",
+              "EventRorB_EventGreen_Clean.csv": "F & | R B F C",
+              "EventGorB_EventBlue_Clean.csv": "F & | C Y F B"}
 
 
 def main(data_files):
@@ -50,8 +55,11 @@ def main(data_files):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 3:
-        print 'Usage: python generate_pc.py <data_file1> ... <date_fileN>'
+    if len(sys.argv) != 2:
+        print 'Usage: python generate_pc.py <data_dir>'
         sys.exit(0)
 
-    main(sys.argv[1:])
+    data_dir = sys.argv[1]
+    files = filter(lambda x: x in tar_lookup.keys(), os.listdir(data_dir))
+    files = map(lambda x: os.path.join(data_dir, x), files)
+    main(files)

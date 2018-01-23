@@ -357,3 +357,414 @@ F & C F B
 F & C F B
 F & C F B
 F & C F B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & C G ! B
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F & B G ! C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F C
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
+F R
