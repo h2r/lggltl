@@ -15,13 +15,13 @@ class Seq2Seq:
         random.seed(SEED)
         self.STOP, self.UNK, self.STOP_ID, self.UNK_ID, self.bsz = "STOP", "UNK", 1, 2, 16
         self.embed_sz, self.rnn_sz, self.init, self.keep_prob = 30, 256, tf.contrib.layers.xavier_initializer(), 0.5
-        self.use_attn = True
+        self.use_attn, self.use_beam_search, self.beam_width = True, True, 5
 
-        # self.train_eval()
+        #self.train_eval()
         self.cross_val()
         
     def train_eval(self):
-        self.input_fn, self.feed_fn, self.test_feed_fn, self.ground_truth = self.make_data_fns()
+        self.input_fn, self.feed_fn, self.test_feed_fn, self.human_feed_fn, self.ground_truth = self.make_data_fns()
         
         self.params = {'src_vocab_size': self.src_vsz,
                        'tar_vocab_size': self.tar_vsz,
@@ -43,6 +43,9 @@ class Seq2Seq:
         preds = [' '.join(map(lambda x: rev_tar.get(x, self.UNK), filter(lambda x: x > 1, p))) for p in preds]
         grounds = [' '.join(map(lambda x: rev_tar.get(x, self.UNK), filter(lambda x: x > 1, g))) for g in self.ground_truth]
         self.compute_acc(zip(grounds, preds))
+        preds = list(self.est.predict(input_fn=self.input_fn, hooks=[tf.train.FeedFnHook(self.human_feed_fn)]))
+        preds = [' '.join(map(lambda x: rev_tar.get(x, self.UNK), filter(lambda x: x > 1, p))) for p in preds]
+        print preds
 
     def cross_val(self):
         src_temp, tar_temp = tempfile.NamedTemporaryFile(delete=False), tempfile.NamedTemporaryFile(delete=False)
@@ -117,7 +120,11 @@ class Seq2Seq:
         def format(values):
             res = []
             for key in keys:
-                res.append("%s = %s" % (key, to_str(values[key])))
+                if len(values[key].shape) == 1:
+                    res.append("%s = %s" % (key, to_str(values[key])))
+                else:
+                    for i in range(values[key].shape[-1]):
+                        res.append("{0}{1} = {2}".format(key, i + 1, to_str(values[key][:, i])))
             return '\n'.join(res)
         return format
 
@@ -134,7 +141,7 @@ class Seq2Seq:
                 tar_words = f.read().strip().split()
 
             # Build + Return Vocabularies
-            src_v, tar_v, stops = set(src_words), set(tar_words), ['**DUMMY**', self.STOP, self.UNK]
+            src_v, tar_v, stops = set(src_words), set(tar_words), ['PAD', self.STOP, self.UNK]
             src_map, tar_map = {w: i for i, w in enumerate(stops + list(src_v))}, {w: i for i, w in enumerate(stops + list(tar_v))}
 
             if FLAGS.reload_path:
@@ -177,6 +184,15 @@ class Seq2Seq:
                     yield {'input': [self.src_vmap.get(w, self.UNK_ID) for w in in_line.split()] + [self.STOP_ID],
                            'output': [self.tar_vmap.get(w, self.UNK_ID) for w in out_line.split()] + [self.STOP_ID]}
 
+        def human_sampler():
+            while True:
+                try:
+                    in_line = raw_input("Please enter a command: ")
+                    yield {'input': [self.src_vmap.get(w, self.UNK_ID) for w in in_line.split()] + [self.STOP_ID],
+                           'output': [self.STOP_ID]}
+                except EOFError:
+                    break
+
         def inf_sampler():
             b = base_sampler()
             while True:
@@ -195,7 +211,7 @@ class Seq2Seq:
                     except StopIteration:
                         break
 
-        train_sampler, test_sampler = inf_sampler(), base_sampler()
+        train_sampler, test_sampler, cli_sampler = inf_sampler(), base_sampler(), human_sampler()
 
         def feed_fn():
             inputs, outputs = [], []
@@ -242,8 +258,30 @@ class Seq2Seq:
                 outputs[i] += [self.STOP_ID] * (output_length - len(outputs[i]))
             return {'input:0': inputs, 'output:0': outputs}
 
+        def human_feed_fn():
+            inputs, outputs = [], []
+            input_length, output_length = 0, 0
+            for i in range(self.bsz):
+                try:
+                    rec = cli_sampler.next()
+                    inputs.append(rec['input'])
+                    outputs.append(rec['output'])
+                    ground_truth.append(rec['output'])
+                    input_length = max(input_length, len(inputs[-1]))
+                    output_length = max(output_length, len(outputs[-1]))
+                except StopIteration:
+                    break
+
+            if input_length == 0:
+                raise StopIteration
+
+            for i in range(len(inputs)):
+                inputs[i] += [self.STOP_ID] * (input_length - len(inputs[i]))
+                outputs[i] += [self.STOP_ID] * (output_length - len(outputs[i]))
+            return {'input:0': inputs, 'output:0': outputs}
+
         print 'Finished data loading'
-        return input_fn, feed_fn, test_feed_fn, ground_truth
+        return input_fn, feed_fn, test_feed_fn, human_feed_fn, ground_truth
 
     def make_cv_data_fns(self, fold_index):
         with open(FLAGS.train_src, 'rb') as srcf, open(FLAGS.train_tar, 'rb') as tarf:
@@ -286,12 +324,12 @@ class Seq2Seq:
 
         def base_train_sampler():
             for in_line, out_line in train_sents:
-                yield {'input': [self.src_vmap.get(w, self.UNK_ID) for w in in_line.split()] + [self.STOP_ID],
+                yield {'input': list(reversed([self.src_vmap.get(w, self.UNK_ID) for w in in_line.split()])) + [self.STOP_ID],
                        'output': [self.tar_vmap.get(w, self.UNK_ID) for w in out_line.split()] + [self.STOP_ID]}
 
         def base_val_sampler():
             for in_line, out_line in val_sents:
-                yield {'input': [self.src_vmap.get(w, self.UNK_ID) for w in in_line.split()] + [self.STOP_ID],
+                yield {'input': list(reversed([self.src_vmap.get(w, self.UNK_ID) for w in in_line.split()])) + [self.STOP_ID],
                        'output': [self.tar_vmap.get(w, self.UNK_ID) for w in out_line.split()] + [self.STOP_ID]}
 
         def inf_sampler(sampler):
@@ -387,38 +425,64 @@ class Seq2Seq:
 
         pred_helper = tf.contrib.seq2seq.GreedyEmbeddingHelper(embeddings, start_tokens=tf.to_int32(start_tokens), end_token=self.STOP_ID)
 
-        def decode(helper, scope, reuse=None):
+        def decode(helper, scope, train=True, reuse=None):
             with tf.variable_scope(scope, reuse=reuse):
                 cell = tf.contrib.rnn.DropoutWrapper(tf.contrib.rnn.GRUCell(num_units=rnn_size), input_keep_prob=self.keep_prob, output_keep_prob=self.keep_prob)
-                if self.use_attn:
-                    attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units=rnn_size, memory=encoder_outputs, memory_sequence_length=input_lengths)
-                    cell = tf.contrib.seq2seq.AttentionWrapper(cell, attention_mechanism, attention_layer_size=rnn_size / 2)
-                out_cell = tf.contrib.rnn.OutputProjectionWrapper(cell, tar_vocab_size, reuse=reuse)
-
-                if self.use_attn:
-                    decoder = tf.contrib.seq2seq.BasicDecoder(cell=out_cell, helper=helper,
-                                                              initial_state=out_cell.zero_state(dtype=tf.float32, batch_size=batch_size).clone(cell_state=encoder_final_state))
+                if train:
+                    if self.use_attn:
+                        attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units=rnn_size, memory=encoder_outputs, memory_sequence_length=input_lengths)
+                        cell = tf.contrib.seq2seq.AttentionWrapper(cell, attention_mechanism, attention_layer_size=rnn_size / 2)
+                    out_cell = tf.contrib.rnn.OutputProjectionWrapper(cell, tar_vocab_size, reuse=reuse)
+                    if self.use_attn:
+                        decoder_initial_state = out_cell.zero_state(dtype=tf.float32, batch_size=batch_size)
+                        decoder_initial_state = decoder_initial_state.clone(cell_state=encoder_final_state)
+                        decoder = tf.contrib.seq2seq.BasicDecoder(cell=out_cell, helper=helper, initial_state=decoder_initial_state)
+                    else:
+                        decoder = tf.contrib.seq2seq.BasicDecoder(cell=out_cell, helper=helper, initial_state=encoder_final_state)
                 else:
-                    decoder = tf.contrib.seq2seq.BasicDecoder(cell=out_cell, helper=helper, initial_state=encoder_final_state)
-                outputs = tf.contrib.seq2seq.dynamic_decode(decoder=decoder, output_time_major=False, impute_finished=True, maximum_iterations=30)
+                    if self.use_attn:
+                        tiled_encoder_outputs = tf.contrib.seq2seq.tile_batch(encoder_outputs, multiplier=self.beam_width)
+                        tiled_encoder_final_state = tf.contrib.seq2seq.tile_batch(encoder_final_state, multiplier=self.beam_width)
+                        tiled_sequence_length = tf.contrib.seq2seq.tile_batch(input_lengths, multiplier=self.beam_width)
+
+                        attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units=rnn_size, memory=tiled_encoder_outputs, memory_sequence_length=tiled_sequence_length)
+                        cell = tf.contrib.seq2seq.AttentionWrapper(cell, attention_mechanism, attention_layer_size=rnn_size / 2)
+                    out_cell = tf.contrib.rnn.OutputProjectionWrapper(cell, tar_vocab_size, reuse=reuse)
+                    if self.use_attn:
+                        decoder_initial_state = out_cell.zero_state(dtype=tf.float32, batch_size=batch_size * self.beam_width)
+                        decoder_initial_state = decoder_initial_state.clone(cell_state=tiled_encoder_final_state)
+                        decoder = tf.contrib.seq2seq.BeamSearchDecoder(cell=out_cell, embedding=embeddings, start_tokens=tf.to_int32(start_tokens), end_token=self.STOP_ID,
+                                                                       initial_state=decoder_initial_state, beam_width=self.beam_width)
+                    else:
+                        decoder = tf.contrib.seq2seq.BeamSearchDecoder(cell=out_cell, embedding=embeddings, start_tokens=tf.to_int32(start_tokens), end_token=self.STOP_ID,
+                                                                       initial_state=encoder_final_state, beam_width=self.beam_width)
+                outputs = tf.contrib.seq2seq.dynamic_decode(decoder=decoder, impute_finished=train or not self.use_beam_search, maximum_iterations=2 * tf.reduce_max(output_lengths))
             return outputs[0]
         
         train_outputs = decode(train_helper, 'decode')
-        pred_outputs = decode(pred_helper, 'decode', reuse=True)
+        if not self.use_beam_search:
+            pred_outputs = decode(pred_helper, 'decode', train=True, reuse=True)
 
-        tf.identity(train_outputs.sample_id[0], name='train_pred')
-        weights = tf.to_float(tf.not_equal(train_output[:, :-1], self.STOP_ID))
-        self.loss = tf.contrib.seq2seq.sequence_loss(train_outputs.rnn_output, output, weights=weights)
-        train_op = layers.optimize_loss(self.loss,
-                                        tf.train.get_global_step(),
-                                        optimizer=params.get('optimizer', 'Adam'),
-                                        learning_rate=params.get('learning_rate', 0.001),
-                                        summaries=['loss', 'learning_rate'])
+            tf.identity(train_outputs.sample_id[0], name='train_pred')
+            weights = tf.to_float(tf.not_equal(train_output[:, :-1], self.STOP_ID))
+            self.loss = tf.contrib.seq2seq.sequence_loss(train_outputs.rnn_output, output, weights=weights)
+            train_op = layers.optimize_loss(self.loss, tf.train.get_global_step(), optimizer=params.get('optimizer', 'Adam'), learning_rate=params.get('learning_rate', 0.001),
+                                            summaries=['loss', 'learning_rate'])
 
-        tf.identity(pred_outputs.sample_id[0], name='predictions')
-        return tf.estimator.EstimatorSpec(mode=mode, predictions=pred_outputs.sample_id, loss=self.loss, train_op=train_op)
+            tf.identity(pred_outputs.sample_id[0], name='predictions')
+            return tf.estimator.EstimatorSpec(mode=mode, predictions=pred_outputs.sample_id, loss=self.loss, train_op=train_op)
+        else:
+            pred_outputs = decode(pred_helper, 'decode', train=False, reuse=True)
+            tf.identity(train_outputs.sample_id[0], name='train_pred')
+            weights = tf.to_float(tf.not_equal(train_output[:, :-1], self.STOP_ID))
+            self.loss = tf.contrib.seq2seq.sequence_loss(train_outputs.rnn_output, output, weights=weights)
+            train_op = layers.optimize_loss(self.loss, tf.train.get_global_step(), optimizer=params.get('optimizer', 'Adam'), learning_rate=params.get('learning_rate', 0.001),
+                                            summaries=['loss', 'learning_rate'])
 
-    
+            tf.identity(pred_outputs.predicted_ids[0], name='predictions')
+            return tf.estimator.EstimatorSpec(mode=mode, predictions=pred_outputs.predicted_ids[:, :, 0], loss=self.loss, train_op=train_op)
+
+
 def main(_):
     Seq2Seq()
 
