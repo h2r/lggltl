@@ -6,7 +6,7 @@ import tensorflow as tf
 import cPickle as pickle
 from tensorflow.contrib import layers
 
-SEED = 1234
+SEED = 9101
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -15,7 +15,7 @@ class Seq2Seq:
         random.seed(SEED)
         self.STOP, self.UNK, self.STOP_ID, self.UNK_ID, self.bsz = "STOP", "UNK", 1, 2, 16
         self.embed_sz, self.rnn_sz, self.init, self.keep_prob = 30, 256, tf.contrib.layers.xavier_initializer(), 0.5
-        self.use_attn, self.use_beam_search, self.beam_width = True, True, 5
+        self.use_attn, self.use_beam_search, self.beam_width = False, True, 5
 
         #self.train_eval()
         self.cross_val()
@@ -440,9 +440,9 @@ class Seq2Seq:
                     else:
                         decoder = tf.contrib.seq2seq.BasicDecoder(cell=out_cell, helper=helper, initial_state=encoder_final_state)
                 else:
+                    tiled_encoder_final_state = tf.contrib.seq2seq.tile_batch(encoder_final_state, multiplier=self.beam_width)
                     if self.use_attn:
                         tiled_encoder_outputs = tf.contrib.seq2seq.tile_batch(encoder_outputs, multiplier=self.beam_width)
-                        tiled_encoder_final_state = tf.contrib.seq2seq.tile_batch(encoder_final_state, multiplier=self.beam_width)
                         tiled_sequence_length = tf.contrib.seq2seq.tile_batch(input_lengths, multiplier=self.beam_width)
 
                         attention_mechanism = tf.contrib.seq2seq.BahdanauAttention(num_units=rnn_size, memory=tiled_encoder_outputs, memory_sequence_length=tiled_sequence_length)
@@ -455,7 +455,7 @@ class Seq2Seq:
                                                                        initial_state=decoder_initial_state, beam_width=self.beam_width)
                     else:
                         decoder = tf.contrib.seq2seq.BeamSearchDecoder(cell=out_cell, embedding=embeddings, start_tokens=tf.to_int32(start_tokens), end_token=self.STOP_ID,
-                                                                       initial_state=encoder_final_state, beam_width=self.beam_width)
+                                                                       initial_state=tiled_encoder_final_state, beam_width=self.beam_width)
                 outputs = tf.contrib.seq2seq.dynamic_decode(decoder=decoder, impute_finished=train or not self.use_beam_search, maximum_iterations=2 * tf.reduce_max(output_lengths))
             return outputs[0]
         
