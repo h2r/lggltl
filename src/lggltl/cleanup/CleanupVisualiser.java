@@ -407,11 +407,12 @@ public class CleanupVisualiser {
                     String key = this.shapeKey(shapeName, colName);
                     String path = pathToImageDir + shapeName + "/" + key + ".png";
                     try {
+//                        System.out.println(path);
                         BufferedImage img = ImageIO.read(new File(path));
                         this.shapeAndColToImages.put(key, img);
                     } catch (IOException e) {
-                        e.printStackTrace();
-                        System.exit(-1);
+//                        e.printStackTrace();
+//                        System.exit(-1);
                     }
                 }
             }

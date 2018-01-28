@@ -2,23 +2,24 @@ import os
 import random
 import tempfile
 import logging
+import numpy as np
 import tensorflow as tf
 import cPickle as pickle
 from tensorflow.contrib import layers
 
-SEED = 9101
+SEED = 1234
 FLAGS = tf.app.flags.FLAGS
 
 
 class Seq2Seq:
     def __init__(self):
         random.seed(SEED)
-        self.STOP, self.UNK, self.STOP_ID, self.UNK_ID, self.bsz = "STOP", "UNK", 1, 2, 16
-        self.embed_sz, self.rnn_sz, self.init, self.keep_prob = 30, 256, tf.contrib.layers.xavier_initializer(), 0.5
-        self.use_attn, self.use_beam_search, self.beam_width = False, True, 5
+        self.STOP, self.UNK, self.STOP_ID, self.UNK_ID, self.bsz = "STOP", "UNK", 1, 2, 32
+        self.embed_sz, self.rnn_sz, self.init, self.keep_prob = 30, 256, tf.contrib.layers.xavier_initializer(), 0.8
+        self.use_attn, self.use_beam_search, self.beam_width, self.num_train_steps = True, True, 5, 4000
 
-        #self.train_eval()
-        self.cross_val()
+        self.train_eval()
+        # self.cross_val()
         
     def train_eval(self):
         self.input_fn, self.feed_fn, self.test_feed_fn, self.human_feed_fn, self.ground_truth = self.make_data_fns()
@@ -36,7 +37,7 @@ class Seq2Seq:
         print_train_preds = tf.train.LoggingTensorHook(['train_pred'], every_n_iter=1000, formatter=self.print_formatter(['train_pred'], self.tar_vmap))
         print_test_preds = tf.train.LoggingTensorHook(['predictions'], every_n_iter=1000, formatter=self.print_formatter(['predictions'], self.tar_vmap))
 
-        self.est.train(input_fn=self.input_fn, hooks=[tf.train.FeedFnHook(self.feed_fn), print_ground_inps, print_ground_outs, print_train_preds, print_test_preds], steps=2000)
+        self.est.train(input_fn=self.input_fn, hooks=[tf.train.FeedFnHook(self.feed_fn), print_ground_inps, print_ground_outs, print_train_preds, print_test_preds], steps=self.num_train_steps / 2)
 
         rev_tar = {v: k for k, v in self.tar_vmap.iteritems()}
         preds = list(self.est.predict(input_fn=self.input_fn, hooks=[tf.train.FeedFnHook(self.test_feed_fn)]))
@@ -44,6 +45,11 @@ class Seq2Seq:
         grounds = [' '.join(map(lambda x: rev_tar.get(x, self.UNK), filter(lambda x: x > 1, g))) for g in self.ground_truth]
         self.compute_acc(zip(grounds, preds))
         preds = list(self.est.predict(input_fn=self.input_fn, hooks=[tf.train.FeedFnHook(self.human_feed_fn)]))
+        # preds = map(lambda x: np.transpose(x), preds)
+        # for p in preds:
+        #    print '*'
+        #    for i in range(self.beam_width):
+        #        print ' '.join(map(lambda x: rev_tar.get(x, self.UNK), filter(lambda x: x > 1, p[i])))
         preds = [' '.join(map(lambda x: rev_tar.get(x, self.UNK), filter(lambda x: x > 1, p))) for p in preds]
         print preds
 
@@ -86,10 +92,16 @@ class Seq2Seq:
             print_train_preds = tf.train.LoggingTensorHook(['train_pred'], every_n_iter=1000, formatter=self.print_formatter(['train_pred'], self.tar_vmap))
             print_test_preds = tf.train.LoggingTensorHook(['predictions'], every_n_iter=1000, formatter=self.print_formatter(['predictions'], self.tar_vmap))
 
-            self.est.train(input_fn=self.input_fn, hooks=[tf.train.FeedFnHook(self.feed_fn), print_ground_inps, print_ground_outs, print_train_preds, print_test_preds], steps=2000)
+            self.est.train(input_fn=self.input_fn, hooks=[tf.train.FeedFnHook(self.feed_fn), print_ground_inps, print_ground_outs, print_train_preds, print_test_preds], steps=self.num_train_steps)
 
             rev_tar = {v: k for k, v in self.tar_vmap.iteritems()}
             preds = list(self.est.predict(input_fn=self.input_fn, hooks=[tf.train.FeedFnHook(self.test_feed_fn)]))
+            #preds = map(lambda x: np.transpose(x), preds)
+            #grounds = [' '.join(map(lambda x: rev_tar.get(x, self.UNK), filter(lambda x: x > 1, g))) for g in self.ground_truth]
+            #for g, p in zip(grounds, preds):
+            #    print 'Ground: {0}'.format(g)
+            #    for i in range(self.beam_width):
+            #        print ' '.join(map(lambda x: rev_tar.get(x, self.UNK), filter(lambda x: x > 1, p[i])))
             preds = [' '.join(map(lambda x: rev_tar.get(x, self.UNK), filter(lambda x: x > 1, p))) for p in preds]
             grounds = [' '.join(map(lambda x: rev_tar.get(x, self.UNK), filter(lambda x: x > 1, g))) for g in self.ground_truth]
             c, t, _ = self.compute_acc(zip(grounds, preds))
@@ -181,14 +193,14 @@ class Seq2Seq:
         def base_sampler():
             with open(FLAGS.train_src) as finput, open(FLAGS.train_tar) as foutput:
                 for in_line, out_line in zip(finput, foutput):
-                    yield {'input': [self.src_vmap.get(w, self.UNK_ID) for w in in_line.split()] + [self.STOP_ID],
+                    yield {'input': list(reversed([self.src_vmap.get(w, self.UNK_ID) for w in in_line.split()])) + [self.STOP_ID],
                            'output': [self.tar_vmap.get(w, self.UNK_ID) for w in out_line.split()] + [self.STOP_ID]}
 
         def human_sampler():
             while True:
                 try:
                     in_line = raw_input("Please enter a command: ")
-                    yield {'input': [self.src_vmap.get(w, self.UNK_ID) for w in in_line.split()] + [self.STOP_ID],
+                    yield {'input': list(reversed([self.src_vmap.get(w, self.UNK_ID) for w in in_line.split()])) + [self.STOP_ID],
                            'output': [self.STOP_ID]}
                 except EOFError:
                     break
@@ -264,6 +276,7 @@ class Seq2Seq:
             for i in range(self.bsz):
                 try:
                     rec = cli_sampler.next()
+                    print rec
                     inputs.append(rec['input'])
                     outputs.append(rec['output'])
                     ground_truth.append(rec['output'])
@@ -489,8 +502,8 @@ def main(_):
 
 if __name__ == '__main__':
     tf.logging._logger.setLevel(logging.INFO)
-    tf.app.flags.DEFINE_string("train_src", "../data/hard_pc_src.txt", "Path to source lang training data.")
-    tf.app.flags.DEFINE_string("train_tar", "../data/hard_pc_tar.txt", "Path to target lang training data.")
+    tf.app.flags.DEFINE_string("train_src", "../data/hard_pc_src_syn.txt", "Path to source lang training data.")
+    tf.app.flags.DEFINE_string("train_tar", "../data/hard_pc_tar_syn.txt", "Path to target lang training data.")
     tf.app.flags.DEFINE_string("vocabs_path", "../data/nlp/processed/seq2seq_vocabs.pkl", "Path to serialized source and target lang word=>id maps")
     tf.app.flags.DEFINE_string("preproc_path", "../data/nlp/processed/seq2seq_preproc_{0}.pkl", "Format string path to serialized source and target data")
     tf.app.flags.DEFINE_integer("epochs", 10, "Number of training epochs.")

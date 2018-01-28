@@ -801,7 +801,7 @@ public class CleanupDomain implements DomainGenerator {
             OOSADomain domain = dgen.generateDomain();
 
 //            State s = CleanupDomain.getClassicState(true);
-            State s = new CreateStartStates().getState("2_pink_yellow_green_blue");
+            State s = new CreateStartStates().getState("2_pink_red_yellow_green");
 
 //            State s = new CreateStartStates().getState("5_pink_red_yellow_green_red_blue");
 

@@ -30,6 +30,7 @@ import lggltl.gltl.GLTLCompiler;
 import lggltl.gltl.state.GLTLState;
 import org.yaml.snakeyaml.Yaml;
 
+import java.text.Normalizer;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,7 +47,8 @@ public class CleanupGLTL {
 //        formula = Formulas.ALW_EVENT_BLUE_AND_EVENT_YELLOW;
 //        formula = Formulas.ROTATE_FOUR_ROOMS;
 //        formula = Formulas.EVENT_BLOCK2GREEN_AND_NEVER_BLUE;
-        formula = Formulas.EVENT_BLOCK2GREEN_AND_NEVER_YELLOW;
+//        formula = Formulas.EVENT_BLOCK2GREEN_AND_NEVER_YELLOW;
+        formula = Formulas.EVENT_BLOCK2GREEN_AND_NEVER_BLUE_UNTIL_BLOCK2GREEN;
 
         if (args.length > 0) {
             formula = args[0];
