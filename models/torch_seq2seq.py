@@ -27,7 +27,7 @@ UNK_token = 2
 src = '../data/hard_pc_src_syn.txt'
 tar = '../data/hard_pc_tar_syn.txt'
 
-SEED = 5678
+SEED = 1234
 random.seed(SEED)
 torch.manual_seed(SEED)
 print('Running with random seed {0}'.format(SEED))
@@ -373,7 +373,8 @@ def evaluate(encoder, decoder, sentence, max_length=MAX_LENGTH):
     for di in range(max_length):
         decoder_output, decoder_hidden, decoder_attention = decoder(
             decoder_input, decoder_hidden, encoder_outputs)
-        decoder_attentions[di] = decoder_attention.data
+        if decoder_attention is not None:
+            decoder_attentions[di] = decoder_attention.data
         topv, topi = decoder_output.data.topk(1)
         ni = topi[0][0]
         if ni == EOS_token:
@@ -512,7 +513,8 @@ if use_cuda:
 # evaluateRandomly(encoder1, attn_decoder1)
 # evaluateTraining(encoder1, attn_decoder1)
 # crossValidation(encoder1, attn_decoder1, pairs)
-crossValidation(encoder1, decoder1, pairs)
+# crossValidation(encoder1, decoder1, pairs)
+evalGeneralization(encoder1, attn_decoder1, pairs, 0.1)
 
 
 # print('Serializing trained model...')
