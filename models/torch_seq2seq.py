@@ -30,6 +30,7 @@ tar = '../data/hard_pc_tar_syn.txt'
 SEED = 5678
 random.seed(SEED)
 torch.manual_seed(SEED)
+print('Running with random seed {0}'.format(SEED))
 
 
 class Lang:
@@ -137,21 +138,27 @@ class EncoderRNN(nn.Module):
 
 
 class DecoderRNN(nn.Module):
-    def __init__(self, hidden_size, output_size):
+    def __init__(self, embed_size, hidden_size, output_size, dropout_p=0.5):
         super(DecoderRNN, self).__init__()
+        self.embed_size = embed_size
+        self.dropout_p = dropout_p
         self.hidden_size = hidden_size
+        self.output_size = output_size
 
-        self.embedding = nn.Embedding(output_size, hidden_size)
-        self.gru = nn.GRU(hidden_size, hidden_size)
-        self.out = nn.Linear(hidden_size, output_size)
+        self.embedding = nn.Embedding(self.embed_size, self.hidden_size)
+        self.dropout1 = nn.Dropout(self.dropout_p)
+        self.dropout2 = nn.Dropout(self.dropout_p)
+        self.gru = nn.GRU(self.hidden_size, self.hidden_size)
+        self.out = nn.Linear(self.hidden_size, self.output_size)
         self.softmax = nn.LogSoftmax(dim=1)
 
-    def forward(self, input, hidden):
+    def forward(self, input, hidden, encoder_outputs):
         output = self.embedding(input).view(1, 1, -1)
-        output = F.relu(output)
+        output = self.dropout1(output)
         output, hidden = self.gru(output, hidden)
+        output = self.dropout2(output)
         output = self.softmax(self.out(output[0]))
-        return output, hidden
+        return output, hidden, None
 
     def initHidden(self):
         result = Variable(torch.zeros(1, 1, self.hidden_size))
@@ -491,11 +498,12 @@ embed_size = 50
 hidden_size = 256
 encoder1 = EncoderRNN(input_lang.n_words, embed_size, hidden_size)
 attn_decoder1 = AttnDecoderRNN(embed_size, hidden_size, output_lang.n_words, dropout_p=0.5)
-
+decoder1 = DecoderRNN(embed_size, hidden_size, output_lang.n_words)
 
 if use_cuda:
     encoder1 = encoder1.cuda()
     attn_decoder1 = attn_decoder1.cuda()
+    decoder1 = decoder1.cuda()
 
 # print('Beginning training...')
 # trainIters(encoder1, attn_decoder1, pairs, 10000, print_every=500)
@@ -503,7 +511,8 @@ if use_cuda:
 # attn_decoder1.eval()
 # evaluateRandomly(encoder1, attn_decoder1)
 # evaluateTraining(encoder1, attn_decoder1)
-crossValidation(encoder1, attn_decoder1, pairs)
+# crossValidation(encoder1, attn_decoder1, pairs)
+crossValidation(encoder1, decoder1, pairs)
 
 
 # print('Serializing trained model...')
