@@ -487,8 +487,8 @@ def evalSampleEff(encoder, decoder, samples, perc):
     for _ in range(10):
         random.shuffle(samples)
 
-    train_samples = random.sample(samples, int(perc * len(samples)))
-    eval_samples = [s for s in samples if s not in train_samples]
+    train_samples = samples[:int(perc * len(samples))]
+    eval_samples = samples[int(perc * len(samples)):]
     print('Training with {0}/{1} random data samples'.format(len(train_samples), len(samples)))
     trainIters(encoder, decoder, train_samples, 10000, print_every=10000)
 
