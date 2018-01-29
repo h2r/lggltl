@@ -521,11 +521,12 @@ if use_cuda:
 # crossValidation(encoder1, decoder1, pairs)
 results = []
 for i in range(1, 10):
-    acc = evalGeneralization(encoder1, attn_decoder1, pairs, 0.1 * i)
+    # acc = evalGeneralization(encoder1, attn_decoder1, pairs, 0.1 * i)
+    acc = evalSampleEff(encoder1, attn_decoder1, pairs, 0.1 * i)
     results.append(acc)
     encoder1.apply(resetWeights)
     attn_decoder1.apply(resetWeights)
-print(','.join(results))
+print(','.join(map(str, results)))
 
 # print('Serializing trained model...')
 # torch.save(encoder1, './pytorch_encoder')
