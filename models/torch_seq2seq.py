@@ -213,6 +213,26 @@ class AttnDecoderRNN(nn.Module):
             return result
 
 
+class RNNLangmod(nn.Module):
+    def __init__(self, embed_layer, rnn_layer, hidden_size, output_size, output_layer=None):
+        super(RNNLangmod, self).__init__()
+        self.hidden_size = hidden_size
+        self.output_size = output_size
+        
+        self.embedding = embed_layer
+        self.rnn = rnn_layer
+        self.output_layer = output_layer if output_layer is not None else nn.Linear(self.hidden_size, self.output_size)
+
+    def forward(self, input, hidden):
+        pass
+    
+    def initHidden(self):
+        result = Variable(torch.zeros(1, 1, self.hidden_size))
+        if use_cuda:
+            return result.cuda()
+        else:
+            return result
+
 def indexesFromSentence(lang, sentence):
     return [lang.word2index[word] for word in sentence.split(' ')]
 
@@ -519,18 +539,18 @@ if use_cuda:
 # attn_decoder1.eval()
 # evaluateRandomly(encoder1, attn_decoder1)
 # evaluateTraining(encoder1, attn_decoder1)
-crossValidation(encoder1, attn_decoder1, pairs)
+# crossValidation(encoder1, attn_decoder1, pairs)
 # crossValidation(encoder1, decoder1, pairs)
-'''
+
 results = []
 for i in range(1, 10):
-    # acc = evalGeneralization(encoder1, attn_decoder1, pairs, 0.1 * i)
-    acc = evalSampleEff(encoder1, attn_decoder1, pairs, 0.1 * i)
+    acc = evalGeneralization(encoder1, attn_decoder1, pairs, 0.1 * i)
+    # acc = evalSampleEff(encoder1, attn_decoder1, pairs, 0.1 * i)
     results.append(acc)
     encoder1.apply(resetWeights)
     attn_decoder1.apply(resetWeights)
 print(','.join(map(str, results)))
-'''
+
 # print('Serializing trained model...')
 # torch.save(encoder1, './pytorch_encoder')
 # torch.save(attn_decoder1, './pytorch_decoder')
