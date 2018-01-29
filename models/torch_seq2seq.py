@@ -179,28 +179,26 @@ class AttnDecoderRNN(nn.Module):
         self.max_length = max_length
 
         self.embedding = nn.Embedding(self.output_size, self.embed_size)
-        self.attn = nn.Linear(self.embed_size + self.hidden_size, self.max_length)
+        self.attn = nn.Linear(self.hidden_size * 2, 1)
         self.attn_combine = nn.Linear(self.embed_size + self.hidden_size, self.hidden_size)
         self.dropout1 = nn.Dropout(self.dropout_p)
         self.dropout2 = nn.Dropout(self.dropout_p)
         self.dropout3 = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(self.hidden_size, self.hidden_size)
+        self.gru = nn.GRU(self.embed_size + self.hidden_size, self.hidden_size)
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, input, hidden, encoder_outputs):
         embedded = self.embedding(input).view(1, 1, -1)
         embedded = self.dropout1(embedded)
 
-        attn_weights = F.softmax(
-            self.attn(torch.cat((embedded[0], hidden[0]), 1)), dim=1)
+        attn_energies = self.attn(torch.cat((hidden[0].repeat(len(encoder_outputs), 1), encoder_outputs), 1))
+        attn_energies = attn_energies.transpose(0, 1)
+        attn_weights = F.softmax(attn_energies, dim=1)
         attn_applied = torch.bmm(attn_weights.unsqueeze(0),
                                  encoder_outputs.unsqueeze(0))
 
         output = torch.cat((embedded[0], attn_applied[0]), 1)
-        output = self.attn_combine(output).unsqueeze(0)
-
-        output = F.relu(output)
-        output = self.dropout2(output)
+        output = self.dropout2(output).unsqueeze(0)
         output, hidden = self.gru(output, hidden)
         output = self.dropout3(output)
 
@@ -488,8 +486,12 @@ def evalSampleEff(encoder, decoder, samples, perc):
         random.shuffle(samples)
 
     train_samples = samples[:int(perc * len(samples))]
+    train_forms = set([s[1] for s in train_samples])
     eval_samples = samples[int(perc * len(samples)):]
+    eval_forms = set([s[1] for s in eval_samples])
     print('Training with {0}/{1} random data samples'.format(len(train_samples), len(samples)))
+    print('{1} Distinct GLTL formulas in training sample: {0}'.format(train_forms, len(train_forms)))
+    print('{1} Distinct GLTL formulas in eval sample: {0}'.format(eval_forms, len(eval_forms)))
     trainIters(encoder, decoder, train_samples, 10000, print_every=10000)
 
     encoder1.eval()
@@ -517,8 +519,9 @@ if use_cuda:
 # attn_decoder1.eval()
 # evaluateRandomly(encoder1, attn_decoder1)
 # evaluateTraining(encoder1, attn_decoder1)
-# crossValidation(encoder1, attn_decoder1, pairs)
+crossValidation(encoder1, attn_decoder1, pairs)
 # crossValidation(encoder1, decoder1, pairs)
+'''
 results = []
 for i in range(1, 10):
     # acc = evalGeneralization(encoder1, attn_decoder1, pairs, 0.1 * i)
@@ -527,7 +530,7 @@ for i in range(1, 10):
     encoder1.apply(resetWeights)
     attn_decoder1.apply(resetWeights)
 print(','.join(map(str, results)))
-
+'''
 # print('Serializing trained model...')
 # torch.save(encoder1, './pytorch_encoder')
 # torch.save(attn_decoder1, './pytorch_decoder')
