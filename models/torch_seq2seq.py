@@ -422,7 +422,7 @@ def evaluateSamples(encoder, decoder, samples):
         if output_words == p[1]:
             corr += 1
         tot += 1
-    return corr, tot, 100. * corr / tot
+    return corr, tot, corr / tot
 
 
 def resetWeights(m):
@@ -451,7 +451,7 @@ def crossValidation(encoder, decoder, samples, n_folds=5):
         attn_decoder1.eval()
 
         corr, tot, acc = evaluateSamples(encoder, decoder, val_samples)
-        print('Cross validation fold #{0} Accuracy: {1}/{2} = {3}%'.format(f + 1, corr, tot, acc))
+        print('Cross validation fold #{0} Accuracy: {1}/{2} = {3}%'.format(f + 1, corr, tot, 100. * acc))
         correct += corr
         total += tot
 
@@ -479,7 +479,7 @@ def evalGeneralization(encoder, decoder, samples, perc):
     attn_decoder1.eval()
 
     corr, tot, acc = evaluateSamples(encoder, decoder, eval_samples)
-    print('Held-out Accuracy: {0}/{1} = {2}%'.format(corr, tot, acc))
+    print('Held-out Accuracy: {0}/{1} = {2}%'.format(corr, tot, 100. * acc))
     return acc
 
 
@@ -496,7 +496,7 @@ def evalSampleEff(encoder, decoder, samples, perc):
     attn_decoder1.eval()
 
     corr, tot, acc = evaluateSamples(encoder, decoder, eval_samples)
-    print('Held-out Accuracy: {0}/{1} = {2}%'.format(corr, tot, acc))
+    print('Held-out Accuracy: {0}/{1} = {2}%'.format(corr, tot, 100. * acc))
     return acc
 
 
