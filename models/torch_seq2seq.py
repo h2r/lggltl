@@ -4,6 +4,7 @@ import re
 import random
 import itertools
 
+import sys
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
@@ -27,7 +28,7 @@ UNK_token = 2
 src = '../data/hard_pc_src_syn.txt'
 tar = '../data/hard_pc_tar_syn.txt'
 
-SEED = 1234
+SEED = 1234 if len(sys.argv) != 2 else int(sys.argv[1])
 random.seed(SEED)
 torch.manual_seed(SEED)
 print('Running with random seed {0}'.format(SEED))
@@ -466,17 +467,20 @@ def evalGeneralization(encoder, decoder, samples, perc):
     tar_set = list(set([s[1] for s in samples]))
     tar_num = int(np.ceil(perc * len(tar_set)))
     train_forms = random.sample(tar_set, tar_num)
+    print('GLTL Training Formulas: {0}'.format(train_forms))
+    print('GLTL Evaluation Formulas: {0}'.format([s for s in tar_set if s not in train_forms]))
     train_samples = [s for s in samples if s[1] in train_forms]
     eval_samples = [s for s in samples if s[1] not in train_forms]
 
     print('Training with {0}/{3} unique GLTL formulas => {1} training samples | {2} testing samples'.format(tar_num, len(train_samples), len(eval_samples), len(tar_set)))
-    trainIters(encoder, decoder, train_samples, 10000, print_every=500)
+    trainIters(encoder, decoder, train_samples, 10000, print_every=10000)
 
     encoder1.eval()
     attn_decoder1.eval()
 
     corr, tot, acc = evaluateSamples(encoder, decoder, eval_samples)
     print('Held-out Accuracy: {0}/{1} = {2}%'.format(corr, tot, acc))
+    return acc
 
 
 def evalSampleEff(encoder, decoder, samples, perc):
@@ -486,13 +490,14 @@ def evalSampleEff(encoder, decoder, samples, perc):
     train_samples = random.sample(samples, int(perc * len(samples)))
     eval_samples = [s for s in samples if s not in train_samples]
     print('Training with {0}/{1} random data samples'.format(len(train_samples), len(samples)))
-    trainIters(encoder, decoder, train_samples, 10000, print_every=500)
+    trainIters(encoder, decoder, train_samples, 10000, print_every=10000)
 
     encoder1.eval()
     attn_decoder1.eval()
 
     corr, tot, acc = evaluateSamples(encoder, decoder, eval_samples)
     print('Held-out Accuracy: {0}/{1} = {2}%'.format(corr, tot, acc))
+    return acc
 
 
 embed_size = 50
@@ -514,8 +519,13 @@ if use_cuda:
 # evaluateTraining(encoder1, attn_decoder1)
 # crossValidation(encoder1, attn_decoder1, pairs)
 # crossValidation(encoder1, decoder1, pairs)
-evalGeneralization(encoder1, attn_decoder1, pairs, 0.1)
-
+results = []
+for i in range(1, 10):
+    acc = evalGeneralization(encoder1, attn_decoder1, pairs, 0.1 * i)
+    results.append(acc)
+    encoder1.apply(resetWeights)
+    attn_decoder1.apply(resetWeights)
+print(','.join(results))
 
 # print('Serializing trained model...')
 # torch.save(encoder1, './pytorch_encoder')
