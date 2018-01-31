@@ -75,7 +75,7 @@ def main():
             acc = evalGeneralization(input_lang, output_lang, encoder1, new_attn_decoder1, pairs, 0.1 * i, MAX_LENGTH)
             results.append(acc)
             encoder1.apply(resetWeights)
-            attn_decoder1.apply(resetWeights)
+            new_attn_decoder1.apply(resetWeights)
         print(', '.join(map(str, results)))
     elif MODE == 7:
         print('Running generalization experiment with encoder and vanilla decoder...')
@@ -84,7 +84,7 @@ def main():
             acc = evalGeneralization(input_lang, output_lang, encoder1, decoder1, pairs, 0.1 * i, MAX_LENGTH)
             results.append(acc)
             encoder1.apply(resetWeights)
-            attn_decoder1.apply(resetWeights)
+            decoder1.apply(resetWeights)
         print(', '.join(map(str, results)))
     # elif MODE == 7:
     #     results = []
