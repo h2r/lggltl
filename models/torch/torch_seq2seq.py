@@ -14,7 +14,7 @@ src, tar = '../../data/hard_pc_src_syn.txt', '../../data/hard_pc_tar_syn.txt'
 SEED = int(sys.argv[1])
 MODE = int(sys.argv[2])
 random.seed(SEED)
-torch.manual_seed(SEED)
+torch.manual_seed(SEED) if not use_cuda else torch.cuda.manual_seed(SEED)
 print('Running with random seed {0}'.format(SEED))
 
 input_lang, output_lang, pairs, MAX_LENGTH, MAX_TAR_LENGTH = prepareData(src, tar, False)
@@ -27,6 +27,7 @@ hidden_size = 256
 encoder1 = EncoderRNN(input_lang.n_words, embed_size, hidden_size)
 attn_decoder1 = AttnDecoderRNN(embed_size, hidden_size, output_lang.n_words)
 new_attn_decoder1 = NewAttnDecoderRNN(embed_size, hidden_size, output_lang.n_words, MAX_LENGTH)
+com_attn_decoder1 = CombinedAttnDecoderRNN(embed_size, hidden_size, output_lang.n_words, MAX_LENGTH)
 decoder1 = DecoderRNN(embed_size, hidden_size, output_lang.n_words)
 
 if use_cuda:
@@ -34,6 +35,7 @@ if use_cuda:
     attn_decoder1 = attn_decoder1.cuda()
     new_attn_decoder1 = new_attn_decoder1.cuda()
     decoder1 = decoder1.cuda()
+    com_attn_decoder1 = com_attn_decoder1.cuda()
 
 SAVE = False
 CLI = False
@@ -85,6 +87,15 @@ def main():
             results.append(acc)
             encoder1.apply(resetWeights)
             decoder1.apply(resetWeights)
+        print(', '.join(map(str, results)))
+    elif MODE == 8:
+        print('Running generalization experiment with encoder and CA decoder...')
+        results = []
+        for i in range(1, 10):
+            acc = evalGeneralization(input_lang, output_lang, encoder1, com_attn_decoder1, pairs, 0.1 * i, MAX_LENGTH)
+            results.append(acc)
+            encoder1.apply(resetWeights)
+            com_attn_decoder1.apply(resetWeights)
         print(', '.join(map(str, results)))
     # elif MODE == 7:
     #     results = []
