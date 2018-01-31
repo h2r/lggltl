@@ -123,7 +123,7 @@ class NewAttnDecoderRNN(nn.Module):
         self.dropout1 = nn.Dropout(self.dropout_p)
         self.dropout2 = nn.Dropout(self.dropout_p)
         self.dropout3 = nn.Dropout(self.dropout_p)
-        self.gru = nn.GRU(self.hidden_size, self.hidden_size)
+        self.gru = nn.GRU(self.embed_size + self.hidden_size, self.hidden_size)
         self.out = nn.Linear(self.hidden_size, self.output_size)
 
     def forward(self, input, hidden, encoder_outputs):
