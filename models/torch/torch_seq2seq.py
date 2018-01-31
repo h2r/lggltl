@@ -94,6 +94,21 @@ def main():
     #         encoder1.apply(resetWeights)
     #         attn_decoder1.apply(resetWeights)
     #     print(', '.join(map(str, results)))
+    elif MODE == 100:
+        from flask import Flask, request, jsonify
+
+        app = Flask(__name__)
+
+        torch.load('./pytorch_encoder')
+        torch.load('./pytorch_decoder')
+
+        @app.route('/model')
+        def model():
+            nl_command = request.args.get('command')
+            output_words, _ = evaluate(input_lang, output_lang, encoder1, attn_decoder1, nl_command, MAX_LENGTH)
+            return ' '.join(output_words[:-1])
+
+        app.run()
     else:
         print('Unknown MODE specified...exiting...')
         sys.exit(0)
