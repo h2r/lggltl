@@ -115,7 +115,6 @@ class NewAttnDecoderRNN(nn.Module):
 
         self.embedding = nn.Embedding(self.output_size, self.embed_size)
         self.attn = nn.Linear(self.embed_size + self.hidden_size, self.max_length)
-        self.attn_combine = nn.Linear(self.embed_size + self.hidden_size, self.hidden_size)
         self.dropout = nn.Dropout(self.dropout_p)
         self.gru = nn.GRU(self.embed_size + self.hidden_size, self.hidden_size)
         self.out = nn.Linear(self.hidden_size, self.output_size)
@@ -153,8 +152,7 @@ class CombinedAttnDecoderRNN(nn.Module):
         self.max_length = max_length
 
         self.embedding = nn.Embedding(self.output_size, self.embed_size)
-        self.attn = nn.Linear(self.embed_size + self.hidden_size, self.max_length)
-        self.attn_combine = nn.Linear(self.embed_size + self.hidden_size, self.hidden_size)
+        self.attn = nn.Linear(self.embed_size + self.hidden_size*2, 1)
         self.dropout = nn.Dropout(self.dropout_p)
         self.gru = nn.GRU(self.embed_size + self.hidden_size, self.hidden_size)
         self.out = nn.Linear(self.hidden_size, self.output_size)
