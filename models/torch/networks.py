@@ -134,7 +134,7 @@ class NewAttnDecoderRNN(nn.Module):
         attn_applied = torch.bmm(attn_weights.unsqueeze(0), encoder_outputs.unsqueeze(0))
 
         output = torch.cat((embedded[0], attn_applied[0]), 1)
-        output = self.dropout2(output)
+        output = self.dropout2(output).unsqueeze(0)
         output, hidden = self.gru(output, hidden)
         output = self.dropout3(output)
 
