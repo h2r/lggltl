@@ -85,8 +85,7 @@ class AttnDecoderRNN(nn.Module):
         attn_energies = self.attn(torch.cat((hidden[0].repeat(len(encoder_outputs), 1), encoder_outputs), 1))
         attn_energies = attn_energies.transpose(0, 1)
         attn_weights = F.softmax(attn_energies, dim=1)
-        attn_applied = torch.bmm(attn_weights.unsqueeze(0),
-                                        encoder_outputs.unsqueeze(0))
+        attn_applied = torch.bmm(attn_weights.unsqueeze(0), encoder_outputs.unsqueeze(0))
 
         output = torch.cat((embedded[0], attn_applied[0]), 1)
         output = self.dropout(output).unsqueeze(0)
@@ -102,6 +101,11 @@ class AttnDecoderRNN(nn.Module):
             return result.cuda()
         else:
             return result
+
+    def inherit(self, langmod):
+        self.embedding = langmod.embed
+        self.gru = langmod.rnn
+        self.out = langmod.decoder
 
 
 class NewAttnDecoderRNN(nn.Module):
@@ -184,10 +188,9 @@ class CombinedAttnDecoderRNN(nn.Module):
             return result
 
 
-class RNNModel(nn.Module):
-    """Container module with an encoder, a recurrent module, and a decoder."""
+class Langmod(nn.Module):
     def __init__(self, embed_size, hidden_size, output_size):
-        super(RNNModel, self).__init__()
+        super(Langmod, self).__init__()
         self.embed_size = embed_size
         self.hidden_size = hidden_size
         self.output_size = output_size
@@ -202,13 +205,14 @@ class RNNModel(nn.Module):
 
     def init_weights(self):
         initrange = 0.1
-        self.encoder.weight.data.uniform_(-initrange, initrange)
+        self.embed.weight.data.uniform_(-initrange, initrange)
         self.decoder.bias.data.fill_(0)
         self.decoder.weight.data.uniform_(-initrange, initrange)
 
     def forward(self, input, hidden):
         emb = self.drop(self.embed(input))
-        output, hidden = self.rnn(emb, hidden)
+        output = self.fc(emb)
+        output, hidden = self.rnn(output, hidden)
         output = self.drop(output)
         decoded = self.decoder(output.view(output.size(0) * output.size(1), output.size(2)))
         return decoded.view(output.size(0), output.size(1), decoded.size(1)), hidden

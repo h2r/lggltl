@@ -1,9 +1,11 @@
 from __future__ import print_function, division
 import sys
+import copy
 
 from lang import *
 from networks import *
 from train_eval import *
+from train_langmod import *
 
 
 use_cuda = torch.cuda.is_available()
@@ -64,39 +66,83 @@ def main():
     elif MODE == 5:
         print('Running generalization experiment with encoder and BA decoder...')
         results = []
-        for i in range(1, 10):
+        for i in reversed(range(1, 10)):
             acc = evalGeneralization(input_lang, output_lang, encoder1, attn_decoder1, pairs, 0.1 * i, MAX_LENGTH)
             results.append(acc)
             encoder1.apply(resetWeights)
             attn_decoder1.apply(resetWeights)
-        print(', '.join(map(str, results)))
+        print(', '.join(map(str, reversed(results))))
     elif MODE == 6:
         print('Running generalization experiment with encoder and EAA decoder...')
         results = []
-        for i in range(1, 10):
+        for i in reversed(range(1, 10)):
             acc = evalGeneralization(input_lang, output_lang, encoder1, new_attn_decoder1, pairs, 0.1 * i, MAX_LENGTH)
             results.append(acc)
             encoder1.apply(resetWeights)
             new_attn_decoder1.apply(resetWeights)
-        print(', '.join(map(str, results)))
+        print(', '.join(map(str, reversed(results))))
     elif MODE == 7:
         print('Running generalization experiment with encoder and vanilla decoder...')
         results = []
-        for i in range(1, 10):
+        for i in reversed(range(1, 10)):
             acc = evalGeneralization(input_lang, output_lang, encoder1, decoder1, pairs, 0.1 * i, MAX_LENGTH)
             results.append(acc)
             encoder1.apply(resetWeights)
             decoder1.apply(resetWeights)
-        print(', '.join(map(str, results)))
+        print(', '.join(map(str, reversed(results))))
     elif MODE == 8:
         print('Running generalization experiment with encoder and CA decoder...')
         results = []
-        for i in range(1, 10):
+        for i in reversed(range(1, 10)):
             acc = evalGeneralization(input_lang, output_lang, encoder1, com_attn_decoder1, pairs, 0.1 * i, MAX_LENGTH)
             results.append(acc)
             encoder1.apply(resetWeights)
             com_attn_decoder1.apply(resetWeights)
-        print(', '.join(map(str, results)))
+        print(', '.join(map(str, reversed(results))))
+
+    elif MODE == 200:
+        langmod_path = './langmod_pre_train.pt'
+        data = '../../data/gltl_langmod.txt'
+        corpus = Corpus(data)
+        batch_size = 64
+        train_data = batchify(corpus.train, batch_size)
+        bptt = 1
+        num_epochs = 3
+        langmod = Langmod(50, 256, output_lang.n_words)
+
+        if not os.path.exists(langmod_path):
+            print('Pre-training RNN language model...')
+
+            if use_cuda:
+                langmod = langmod.cuda()
+
+            for epoch in range(num_epochs):
+                langmod_train(data, langmod, batch_size, bptt, epoch, log_interval=200, lr=1.0)
+
+            torch.save(langmod.state_dict(), langmod_path)
+        else:
+            langmod.load_state_dict(torch.load(langmod_path))
+        orig_e = copy.deepcopy(langmod.embed.weight)
+        attn_decoder1.inherit(langmod)
+
+        print('Running generalization + pre-training experiment with encoder and BA decoder...')
+        results = []
+        for i in reversed(range(1, 10)):
+            # acc = evalGeneralization(input_lang, output_lang, encoder1, attn_decoder1, pairs, 0.1 * i, MAX_LENGTH)
+            acc = evalGeneralizationPT(input_lang, output_lang, encoder1, attn_decoder1, langmod, pairs, 0.1 * i, MAX_LENGTH,
+                                     train_data, batch_size, bptt)
+            results.append(acc)
+            encoder1.apply(resetWeights)
+            attn_decoder1.apply(resetWeights)
+            langmod = Langmod(50, 256, output_lang.n_words)
+            langmod.load_state_dict(torch.load(langmod_path))
+            attn_decoder1.inherit(langmod)
+
+            assert torch.sum(attn_decoder1.embedding.weight - orig_e).data[0] == 0.0
+        print(', '.join(map(str, reversed(results))))
+
+
+
     # elif MODE == 7:
     #     results = []
     #     for i in range(1, 10):
@@ -110,8 +156,8 @@ def main():
 
         app = Flask(__name__)
 
-        torch.load('./pytorch_encoder')
-        torch.load('./pytorch_decoder')
+        encoder1.load_state_dict(torch.load('./pytorch_encoder'))
+        attn_decoder1.load_state_dict(torch.load('./pytorch_decoder'))
 
         @app.route('/model')
         def model():
@@ -126,8 +172,8 @@ def main():
 
     if SAVE:
         print('Serializing trained model...')
-        torch.save(encoder1, './pytorch_encoder')
-        torch.save(attn_decoder1, './pytorch_decoder')
+        torch.save(encoder1.state_dict(), './pytorch_encoder')
+        torch.save(attn_decoder1.state_dict(), './pytorch_decoder')
         print('Serialized trained model to disk...')
 
     if CLI:

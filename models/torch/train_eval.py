@@ -10,6 +10,7 @@ from torch import optim
 import itertools
 
 from utils import *
+from train_langmod import *
 
 SOS_token = 0
 EOS_token = 1
@@ -126,7 +127,7 @@ def trainIters(in_lang, out_lang, encoder, decoder, samples, n_iters, max_length
             plot_loss_total = 0
 
 
-def evaluate(input_lang, output_lang, encoder, decoder, sentence, max_length):
+def evaluate2(input_lang, output_lang, encoder, decoder, sentence, max_length):
     input_variable = variableFromSentence(input_lang, ' '.join(list(reversed(sentence.split()))))
     input_length = input_variable.size()[0]
     encoder_hidden = encoder.initHidden()
@@ -152,6 +153,7 @@ def evaluate(input_lang, output_lang, encoder, decoder, sentence, max_length):
             decoder_input, decoder_hidden, encoder_outputs)
         if decoder_attention is not None:
             decoder_attentions[di] = decoder_attention.data
+
         topv, topi = decoder_output.data.topk(1)
         ni = topi[0][0]
         if ni == EOS_token:
@@ -164,6 +166,71 @@ def evaluate(input_lang, output_lang, encoder, decoder, sentence, max_length):
         decoder_input = decoder_input.cuda() if use_cuda else decoder_input
 
     return decoded_words, decoder_attentions[:di + 1]
+
+
+def evaluate(input_lang, output_lang, encoder, decoder, sentence, max_length):
+    input_variable = variableFromSentence(input_lang, ' '.join(list(reversed(sentence.split()))))
+    input_length = input_variable.size()[0]
+    encoder_hidden = encoder.initHidden()
+
+    encoder_outputs = Variable(torch.zeros(max_length, encoder.hidden_size))
+    encoder_outputs = encoder_outputs.cuda() if use_cuda else encoder_outputs
+
+    for ei in range(input_length):
+        encoder_output, encoder_hidden = encoder(input_variable[ei],
+                                                 encoder_hidden)
+        encoder_outputs[ei] = encoder_outputs[ei] + encoder_output[0][0]
+
+    decoder_hidden = encoder_hidden
+
+    candidates = [([SOS_token], decoder_hidden, 0.0)]
+    beam_width = 10
+    completed = []
+
+    while len(candidates) > 0:
+        new_candidates = []
+        for i in range(len(candidates)):
+            seq, hidden, score = candidates[i]
+
+            if seq[-1] == EOS_token or len(seq) == max_length:
+                continue
+
+            decoder_input = Variable(torch.LongTensor([[seq[-1]]]))
+            decoder_input = decoder_input.cuda() if use_cuda else decoder_input
+
+            decoder_output, decoder_hidden, decoder_attention = decoder(decoder_input, hidden, encoder_outputs)
+
+            topv, topi = decoder_output.data.topk(decoder_output.size()[-1])
+            # print(('Input token: ', output_lang.index2word[seq[-1]]))
+            # print(topi[0].numpy())
+            for v, i in zip(topv[0], topi[0]):
+                new_candidates.append((seq + [i], decoder_hidden, score + v))
+        candidates = sorted(new_candidates, key=lambda x: x[2], reverse=True)
+        # print([([output_lang.index2word[i] for i in x], z) for x, y, z in candidates])
+        # print()
+
+        candidates = candidates[:beam_width]
+        next_candidates = []
+        for x, y, z in candidates:
+            if x[-1] == EOS_token:
+                if len(completed) == 0:
+                    completed.append((x, z))
+                else:
+                    if z > completed[0][1]:
+                        completed = [(x, z)]
+            else:
+                next_candidates.append((x, y, z))
+
+        candidates = next_candidates
+        # print([([output_lang.index2word[i] for i in x], z) for x, y, z in candidates])
+        # print()
+        # print([([output_lang.index2word[i] for i in x[0]], x[1]) for x in completed])
+        # raw_input()
+
+    completed = sorted(completed, key=lambda x: x[1], reverse=True)
+    decoded_words = [output_lang.index2word[i] for i in completed[0][0]]
+
+    return decoded_words[1:-1], None
 
 
 def evaluateRandomly(input_lang, output_lang, encoder, decoder, pairs, max_length, n=10):
@@ -195,6 +262,7 @@ def evaluateSamples(input_lang, output_lang, encoder, decoder, samples, max_leng
     for p in samples:
         output_words, attentions = evaluate(input_lang, output_lang, encoder, decoder, p[0], max_length)
         output_words = ' '.join(output_words[:-1])
+        print((output_words, p[1]))
         if output_words == p[1]:
             corr += 1
         tot += 1
@@ -259,6 +327,37 @@ def evalGeneralization(in_lang, out_lang, encoder, decoder, samples, perc, max_l
 
     encoder.eval()
     decoder.eval()
+
+    corr, tot, acc = evaluateSamples(in_lang, out_lang, encoder, decoder, eval_samples, max_length)
+    print('Held-out Accuracy: {0}/{1} = {2}%'.format(corr, tot, 100. * acc))
+    return acc
+
+
+def evalGeneralizationPT(in_lang, out_lang, encoder, decoder, langmod, samples, perc, max_length, train_data, batch_size, bptt):
+    for _ in range(10):
+        random.shuffle(samples)
+
+    encoder.train()
+    decoder.train()
+    langmod.train()
+
+    tar_set = list(set([s[1] for s in samples]))
+    tar_num = int(np.ceil(perc * len(tar_set)))
+    train_forms = random.sample(tar_set, tar_num)
+    print('GLTL Training Formulas: {0}'.format(train_forms))
+    print('GLTL Evaluation Formulas: {0}'.format([s for s in tar_set if s not in train_forms]))
+    train_samples = [s for s in samples if s[1] in train_forms]
+    eval_samples = [s for s in samples if s[1] not in train_forms]
+
+    print('Training with {0}/{3} unique GLTL formulas => {1} training samples | {2} testing samples'.format(tar_num, len(train_samples), len(eval_samples), len(tar_set)))
+    for _ in range(10):
+        trainIters(in_lang, out_lang, encoder, decoder, train_samples, 1000, max_length, print_every=1000)
+        langmod_train2(train_data, langmod, batch_size, bptt, 0, 5000, 0.01)
+    trainIters(in_lang, out_lang, encoder, decoder, train_samples, 1000, max_length, print_every=1000)
+
+    encoder.eval()
+    decoder.eval()
+    langmod.eval()
 
     corr, tot, acc = evaluateSamples(in_lang, out_lang, encoder, decoder, eval_samples, max_length)
     print('Held-out Accuracy: {0}/{1} = {2}%'.format(corr, tot, 100. * acc))
