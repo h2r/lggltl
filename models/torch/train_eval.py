@@ -352,7 +352,7 @@ def evalGeneralizationPT(in_lang, out_lang, encoder, decoder, langmod, samples, 
     print('Training with {0}/{3} unique GLTL formulas => {1} training samples | {2} testing samples'.format(tar_num, len(train_samples), len(eval_samples), len(tar_set)))
     for _ in range(10):
         trainIters(in_lang, out_lang, encoder, decoder, train_samples, 1000, max_length, print_every=1000)
-        langmod_train2(train_data, langmod, batch_size, bptt, 0, 5000, 0.01)
+        langmod_train2(train_data, langmod, batch_size, bptt, 0, 2000, 0.01)
     trainIters(in_lang, out_lang, encoder, decoder, train_samples, 1000, max_length, print_every=1000)
 
     encoder.eval()

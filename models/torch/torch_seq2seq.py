@@ -12,6 +12,9 @@ use_cuda = torch.cuda.is_available()
 
 src, tar = '../../data/hard_pc_src_syn.txt', '../../data/hard_pc_tar_syn.txt'
 # src, tar = '../../data/hard_pc_src.txt', '../../data/hard_pc_tar.txt'
+# src, tar = '../../data/hard_pc_src2.txt', '../../data/hard_pc_tar2.txt'
+# src, tar = '../../data/hard_pc_src_syn2.txt', '../../data/hard_pc_tar_syn2.txt'
+
 
 SEED = int(sys.argv[1])
 MODE = int(sys.argv[2])
@@ -132,6 +135,7 @@ def main():
             acc = evalGeneralizationPT(input_lang, output_lang, encoder1, attn_decoder1, langmod, pairs, 0.1 * i, MAX_LENGTH,
                                      train_data, batch_size, bptt)
             results.append(acc)
+            print(results)
             encoder1.apply(resetWeights)
             attn_decoder1.apply(resetWeights)
             langmod = Langmod(50, 256, output_lang.n_words)
