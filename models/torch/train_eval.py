@@ -127,7 +127,7 @@ def trainIters(in_lang, out_lang, encoder, decoder, samples, n_iters, max_length
             plot_loss_total = 0
 
 
-def evaluate2(input_lang, output_lang, encoder, decoder, sentence, max_length):
+def evaluate(input_lang, output_lang, encoder, decoder, sentence, max_length):
     input_variable = variableFromSentence(input_lang, ' '.join(list(reversed(sentence.split()))))
     input_length = input_variable.size()[0]
     encoder_hidden = encoder.initHidden()
@@ -168,7 +168,7 @@ def evaluate2(input_lang, output_lang, encoder, decoder, sentence, max_length):
     return decoded_words, decoder_attentions[:di + 1]
 
 
-def evaluate(input_lang, output_lang, encoder, decoder, sentence, max_length):
+def evaluate2(input_lang, output_lang, encoder, decoder, sentence, max_length):
     input_variable = variableFromSentence(input_lang, ' '.join(list(reversed(sentence.split()))))
     input_length = input_variable.size()[0]
     encoder_hidden = encoder.initHidden()
@@ -262,7 +262,7 @@ def evaluateSamples(input_lang, output_lang, encoder, decoder, samples, max_leng
     for p in samples:
         output_words, attentions = evaluate(input_lang, output_lang, encoder, decoder, p[0], max_length)
         output_words = ' '.join(output_words[:-1])
-        print((output_words, p[1]))
+        # print((output_words, p[1]))
         if output_words == p[1]:
             corr += 1
         tot += 1

@@ -10,10 +10,10 @@ from train_langmod import *
 
 use_cuda = torch.cuda.is_available()
 
-src, tar = '../../data/hard_pc_src_syn.txt', '../../data/hard_pc_tar_syn.txt'
+# src, tar = '../../data/hard_pc_src_syn.txt', '../../data/hard_pc_tar_syn.txt'
 # src, tar = '../../data/hard_pc_src.txt', '../../data/hard_pc_tar.txt'
 # src, tar = '../../data/hard_pc_src2.txt', '../../data/hard_pc_tar2.txt'
-# src, tar = '../../data/hard_pc_src_syn2.txt', '../../data/hard_pc_tar_syn2.txt'
+src, tar = '../../data/hard_pc_src_syn2.txt', '../../data/hard_pc_tar_syn2.txt'
 
 
 SEED = int(sys.argv[1])
