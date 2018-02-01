@@ -230,7 +230,7 @@ def evaluate(input_lang, output_lang, encoder, decoder, sentence, max_length):
     completed = sorted(completed, key=lambda x: x[1], reverse=True)
     decoded_words = [output_lang.index2word[i] for i in completed[0][0]]
 
-    return decoded_words[1:-1], None
+    return decoded_words[1:], None
 
 
 def evaluateRandomly(input_lang, output_lang, encoder, decoder, pairs, max_length, n=10):

@@ -110,11 +110,11 @@ def main():
         num_epochs = 3
         langmod = Langmod(50, 256, output_lang.n_words)
 
+        if use_cuda:
+            langmod = langmod.cuda()
+
         if not os.path.exists(langmod_path):
             print('Pre-training RNN language model...')
-
-            if use_cuda:
-                langmod = langmod.cuda()
 
             for epoch in range(num_epochs):
                 langmod_train(data, langmod, batch_size, bptt, epoch, log_interval=200, lr=1.0)
