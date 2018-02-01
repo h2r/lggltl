@@ -102,7 +102,7 @@ def main():
 
     elif MODE == 200:
         langmod_path = './langmod_pre_train.pt'
-        data = '../../data/gltl_langmod.txt'
+        data = '../../data/gltl_langmod2.txt'
         corpus = Corpus(data)
         batch_size = 64
         train_data = batchify(corpus.train, batch_size)
@@ -135,6 +135,9 @@ def main():
             encoder1.apply(resetWeights)
             attn_decoder1.apply(resetWeights)
             langmod = Langmod(50, 256, output_lang.n_words)
+            if use_cuda:
+                langmod = langmod.cuda()
+
             langmod.load_state_dict(torch.load(langmod_path))
             attn_decoder1.inherit(langmod)
 
