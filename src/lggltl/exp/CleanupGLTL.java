@@ -23,9 +23,10 @@ import burlap.mdp.singleagent.oo.OOSADomain;
 import burlap.statehashing.HashableStateFactory;
 import burlap.statehashing.simple.SimpleHashableStateFactory;
 import burlap.visualizer.Visualizer;
-import lggltl.cleanup.CleanupDomain;
-import lggltl.cleanup.CleanupVisualiser;
-import lggltl.cleanup.state.CleanupState;
+import amdp.cleanup.CleanupDomain;
+import amdp.cleanup.CleanupVisualiser;
+import lggltl.cleanup.CreateStartStates;
+import amdp.cleanup.state.CleanupState;
 import lggltl.gltl.GLTLCompiler;
 import lggltl.gltl.state.GLTLState;
 import org.yaml.snakeyaml.Yaml;
@@ -46,7 +47,9 @@ public class CleanupGLTL {
 //        formula = Formulas.ALW_EVENT_BLUE_AND_EVENT_YELLOW;
 //        formula = Formulas.ROTATE_FOUR_ROOMS;
 //        formula = Formulas.EVENT_BLOCK2GREEN_AND_NEVER_BLUE;
-        formula = Formulas.EVENT_BLOCK2GREEN_AND_NEVER_YELLOW;
+//        formula = Formulas.EVENT_BLOCK2GREEN_AND_NEVER_YELLOW;
+        formula = Formulas.EVENT_BLUE_NEVER_GREEN;
+        formula = "F4&BF4C";
 
         if (args.length > 0) {
             formula = args[0];
@@ -65,11 +68,13 @@ public class CleanupGLTL {
         envDomain = dgen.generateDomain();
 
 //        State s = CleanupDomain.getClassicState(true);
-        State s = CleanupDomain.getState(true, false, 1, 4);
+//        State s = CleanupDomain.getState(true, false, 1, 4);
+        State s = new CreateStartStates().getState("2_pink_yellow_green_blue");
+
 
 
 //        Map<String, GroundedProp> symbolMap = SymbolMaps.CS_SYMBOL_MAP;
-        Map<String, GroundedProp> symbolMap = SymbolMaps.FR_SYMBOL_MAP;
+        Map<String, GroundedProp> symbolMap = SymbolMaps.getSymbolMap((CleanupState) s);
 
         GLTLCompiler compiler = new GLTLCompiler(formula, symbolMap, envDomain);
         Domain compiledDomain = compiler.generateDomain();
