@@ -122,8 +122,19 @@ public class Formulas {
 //        mapping_formulae.put("F & R F C","F4&RF4C");
 //        mapping_formulae.put("F & R F B","F4&RF4B");
 
+<<<<<<< HEAD
 
         return mapping_formulae;
     }
+=======
+    protected static final String ALW_EVENT_GREEN_AND_EVENT_BLUE = "G4F4&CF4B"; //Always eventually (Green and eventually Blue)
+    protected static final String ALW_EVENT_RED_AND_EVENT_BLUE = "G4F4&RF4B"; //Always eventually (Red and eventually Blue)
+    protected static final String ALW_EVENT_BLUE_AND_EVENT_YELLOW = "G4F4&BF4Y"; //Always eventually (Blue and eventually Yellow)
+
+    protected static final String EVENT_BLOCK2GREEN = "F4X";
+    protected static final String EVENT_BLOCK2GREEN_AND_NEVER_BLUE = "&F4XG4!B";
+    protected static final String EVENT_BLOCK2GREEN_AND_NEVER_BLUE_UNTIL_BLOCK2GREEN = "&F4XU4G4!BX";
+    protected static final String EVENT_BLOCK2GREEN_AND_NEVER_YELLOW = "&F4XG4!Y";
+>>>>>>> 20ba64d71fd0f8552b07dedaa4b2a50641262fc4
 
 }
