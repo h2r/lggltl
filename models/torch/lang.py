@@ -1,6 +1,8 @@
 import re
 import os
 import torch
+import bcolz
+import pickle
 
 class Lang:
     def __init__(self, name):
@@ -116,3 +118,25 @@ class Corpus(object):
                     token += 1
 
         return ids
+
+
+def vectors_for_input_language(lang, vectors):
+    glove_path = '/home/ng/workspace/lggltl/lggltl/glove.6B/'
+    vectors = bcolz.open(glove_path + '6B.50.dat')[:]
+    words = pickle.load(open(glove_path + '6B.50_words.pkl', 'rb'))
+    word2idx = pickle.load(open(glove_path + '6B.50_idx.pkl', 'rb'))
+
+    glove = {w: vectors[word2idx[w]] for w in words}
+
+    target_vocab = lang
+
+    matrix_len = len(target_vocab)
+    weights_matrix = np.zeros((matrix_len, 50))
+    words_found = 0
+
+    for i, word in enumerate(target_vocab):
+        try:
+            weights_matrix[i] = glove[word]
+            words_found += 1
+        except KeyError:
+            weights_matrix[i] = np.random.normal(scale=0.6, size=(emb_dim,))

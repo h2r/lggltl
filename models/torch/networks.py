@@ -32,6 +32,34 @@ class EncoderRNN(nn.Module):
         else:
             return result
 
+class TestEncoderRNN(nn.Module):
+    def __init__(self, input_size, embed_size, hidden_size, dropout_p):
+        super(TestEncoderRNN, self).__init__()
+        self.embed_size = embed_size
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.dropout_p = dropout_p
+
+
+        self.embedding = nn.Embedding(self.input_size, self.embed_size)
+        self.gru = nn.GRU(self.embed_size,self.hidden_size)
+
+    def forward(self, input, hidden):
+        embedded = self.embedding(input).view(1, 1, -1)
+        output = self.dropout(embedded)
+        output, hidden = self.gru(output, hidden)
+        output = self.dropout(output)
+        return output, hidden
+
+    def initHidden(self):
+        result = Variable(torch.zeros(1, 1, self.hidden_size))
+        if use_cuda:
+            return result.cuda()
+        else:
+            return result
+
+
+
 
 class DecoderRNN(nn.Module):
     def __init__(self, embed_size, hidden_size, output_size, dropout_p=0.2):

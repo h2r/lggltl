@@ -11,9 +11,9 @@ from train_langmod import *
 use_cuda = torch.cuda.is_available()
 
 # src, tar = '../../data/hard_pc_src_syn.txt', '../../data/hard_pc_tar_syn.txt'
-# src, tar = '../../data/hard_pc_src.txt', '../../data/hard_pc_tar.txt'
+src, tar = '../../data/hard_pc_src.txt', '../../data/hard_pc_tar.txt'
 # src, tar = '../../data/hard_pc_src2.txt', '../../data/hard_pc_tar2.txt'
-src, tar = '../../data/hard_pc_src_syn2.txt', '../../data/hard_pc_tar_syn2.txt'
+# src, tar = '../../data/hard_pc_src_syn2.txt', '../../data/hard_pc_tar_syn2.txt'
 
 
 SEED = int(sys.argv[1])
@@ -29,7 +29,9 @@ print(random.choice(pairs))
 
 embed_size = 50
 hidden_size = 256
+glove_map = vectors_for_input_language(input_lang)
 encoder1 = EncoderRNN(input_lang.n_words, embed_size, hidden_size)
+encoder2 = TestEncoderRNN(input_lang.n_words, embed_size, hidden_size, glove_map)
 attn_decoder1 = AttnDecoderRNN(embed_size, hidden_size, output_lang.n_words)
 new_attn_decoder1 = NewAttnDecoderRNN(embed_size, hidden_size, output_lang.n_words, MAX_LENGTH)
 com_attn_decoder1 = CombinedAttnDecoderRNN(embed_size, hidden_size, output_lang.n_words, MAX_LENGTH)
@@ -37,6 +39,7 @@ decoder1 = DecoderRNN(embed_size, hidden_size, output_lang.n_words)
 
 if use_cuda:
     encoder1 = encoder1.cuda()
+    encoder2 = encoder2.cuda()
     attn_decoder1 = attn_decoder1.cuda()
     new_attn_decoder1 = new_attn_decoder1.cuda()
     decoder1 = decoder1.cuda()
@@ -53,10 +56,10 @@ def main():
         attn_decoder1.eval()
         evaluateRandomly(input_lang, output_lang, encoder1, attn_decoder1, pairs, MAX_LENGTH)
     elif MODE == 1:
-        trainIters(input_lang, output_lang, encoder1, attn_decoder1, pairs, 10000, MAX_LENGTH, print_every=500)
+        trainIters(input_lang, output_lang, encoder2, attn_decoder1, pairs, 10000, MAX_LENGTH, print_every=500)
         encoder1.eval()
         attn_decoder1.eval()
-        evaluateTraining(input_lang, output_lang, encoder1, attn_decoder1, pairs, MAX_LENGTH)
+        evaluateTraining(input_lang, output_lang, encoder2, attn_decoder1, pairs, MAX_LENGTH)
     elif MODE == 2:
         print('Running cross validation on encoder and BA decoder...')
         crossValidation(input_lang, output_lang, encoder1, attn_decoder1, pairs, MAX_LENGTH)
