@@ -3,6 +3,8 @@ import os
 import torch
 import bcolz
 import pickle
+import numpy as np
+
 
 class Lang:
     def __init__(self, name):
@@ -120,7 +122,8 @@ class Corpus(object):
         return ids
 
 
-def vectors_for_input_language(lang, vectors):
+def vectors_for_input_language(lang):
+    # source for this code: https://medium.com/@martinpella/how-to-use-pre-trained-word-embeddings-in-pytorch-71ca59249f76
     glove_path = '/home/ng/workspace/lggltl/lggltl/glove.6B/'
     vectors = bcolz.open(glove_path + '6B.50.dat')[:]
     words = pickle.load(open(glove_path + '6B.50_words.pkl', 'rb'))
@@ -128,15 +131,24 @@ def vectors_for_input_language(lang, vectors):
 
     glove = {w: vectors[word2idx[w]] for w in words}
 
-    target_vocab = lang
+    target_vocab = lang.index2word
+
+    emb_dim = 50
 
     matrix_len = len(target_vocab)
-    weights_matrix = np.zeros((matrix_len, 50))
+    weights_matrix = np.zeros((matrix_len, emb_dim))
     words_found = 0
+    i=0
 
-    for i, word in enumerate(target_vocab):
+    for word in target_vocab:
         try:
-            weights_matrix[i] = glove[word]
+            # print(target_vocab[word])
+            weights_matrix[i] = glove[target_vocab[word]]
+            # print(i)
+            # print(word)
             words_found += 1
+            i+=1
         except KeyError:
             weights_matrix[i] = np.random.normal(scale=0.6, size=(emb_dim,))
+
+    return weights_matrix

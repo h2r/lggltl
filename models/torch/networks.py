@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torch import optim
 import torch.nn.functional as F
+import csv
 
 use_cuda = torch.cuda.is_available()
 
@@ -32,24 +33,42 @@ class EncoderRNN(nn.Module):
         else:
             return result
 
+
+def create_emb_layer(weights_matrix, non_trainable=False):
+    num_embeddings, embedding_dim = weights_matrix.shape
+    emb_layer = nn.Embedding(num_embeddings, embedding_dim)
+    print(type(weights_matrix))
+    emb_layer.load_state_dict({'weight': torch.FloatTensor(weights_matrix)})
+    if non_trainable:
+        emb_layer.weight.requires_grad = False
+
+    return emb_layer, num_embeddings, embedding_dim
+
+
+
 class TestEncoderRNN(nn.Module):
-    def __init__(self, input_size, embed_size, hidden_size, dropout_p):
+    def __init__(self, input_size, embed_size, hidden_size, weights_matrix):
         super(TestEncoderRNN, self).__init__()
-        self.embed_size = embed_size
-        self.input_size = input_size
+        # self.embed_size = embed_size
+        # self.input_size = input_size
         self.hidden_size = hidden_size
-        self.dropout_p = dropout_p
+        self.init_weights = weights_matrix
+        # self.dropout_p = dropout_p
+        self.embedding, num_embeddings, self.embed_size = create_emb_layer(weights_matrix, False)
 
 
-        self.embedding = nn.Embedding(self.input_size, self.embed_size)
+
+        # self.embedding = nn.Embedding(self.input_size, self.embed_size)
         self.gru = nn.GRU(self.embed_size,self.hidden_size)
 
     def forward(self, input, hidden):
-        embedded = self.embedding(input).view(1, 1, -1)
-        output = self.dropout(embedded)
-        output, hidden = self.gru(output, hidden)
-        output = self.dropout(output)
-        return output, hidden
+        return self.gru(self.embedding(input).view(1, 1, -1), hidden)
+        # embedded = self.embedding(input).view(1, 1, -1)
+        # output = self.dropout(embedded)
+        # output, hidden = self.gru(output, hidden)
+        # output = self.dropout(output)
+        # return output, hidden
+
 
     def initHidden(self):
         result = Variable(torch.zeros(1, 1, self.hidden_size))
@@ -57,6 +76,12 @@ class TestEncoderRNN(nn.Module):
             return result.cuda()
         else:
             return result
+
+    def resetWeights(self):
+        self.embedding, num_embeddings, self.embed_size = create_emb_layer(self.init_weights, False)
+
+
+
 
 
 
@@ -89,6 +114,7 @@ class DecoderRNN(nn.Module):
             return result.cuda()
         else:
             return result
+
 
 
 class AttnDecoderRNN(nn.Module):
@@ -150,6 +176,8 @@ class NewAttnDecoderRNN(nn.Module):
         self.dropout = nn.Dropout(self.dropout_p)
         self.gru = nn.GRU(self.embed_size + self.hidden_size, self.hidden_size)
         self.out = nn.Linear(self.hidden_size, self.output_size)
+        self.in_test = False
+        self.writer = None
 
     def forward(self, input, hidden, encoder_outputs):
         embedded = self.embedding(input).view(1, 1, -1)
@@ -164,6 +192,10 @@ class NewAttnDecoderRNN(nn.Module):
         output = self.dropout(output)
 
         output = F.log_softmax(self.out(output[0]), dim=1)
+        # print(list(torch.squeeze(hidden).data.numpy().shape))
+        if self.in_test:
+            self.writer.writerow(torch.squeeze(hidden).data.numpy())
+
         return output, hidden, attn_weights
 
     def initHidden(self):
@@ -172,6 +204,10 @@ class NewAttnDecoderRNN(nn.Module):
             return result.cuda()
         else:
             return result
+
+    def testing_mode(self, fh):
+        self.in_test=True
+        self.writer = csv.writer(fh)
 
 
 class CombinedAttnDecoderRNN(nn.Module):
@@ -248,6 +284,11 @@ class Langmod(nn.Module):
     def init_hidden(self, bsz):
         weight = next(self.parameters()).data
         return Variable(weight.new(1, bsz, self.hidden_size).zero_())
+
+
+# class simple_classifier(nn.Module):
+#     def __init__(self, input_lang):
+#     def gen_embedding(self):
 
 
 # class RNNLangmod(nn.Module):

@@ -41,6 +41,12 @@ def variablesFromPair(input_lang, output_lang, pair):
 teacher_forcing_ratio = 0.5
 
 
+# def train_classifer(input_variable, target_variable, encoder, classifier_network, classifier_optimizer, criterion, max_length):
+#     encoder_hidden = encoder.initHidden()
+#     encoder
+#     classifier_optimizer.zero_grad()
+#     input_length =
+
 def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, decoder_optimizer, criterion, max_length):
     encoder_hidden = encoder.initHidden()
 
@@ -91,7 +97,7 @@ def train(input_variable, target_variable, encoder, decoder, encoder_optimizer, 
     encoder_optimizer.step()
     decoder_optimizer.step()
 
-    return loss.data[0] / target_length
+    return loss.item() / target_length
 
 
 def trainIters(in_lang, out_lang, encoder, decoder, samples, n_iters, max_length, print_every=1000, plot_every=100, learning_rate=0.001):
@@ -160,7 +166,7 @@ def evaluate(input_lang, output_lang, encoder, decoder, sentence, max_length):
             decoded_words.append('<EOS>')
             break
         else:
-            decoded_words.append(output_lang.index2word[ni])
+            decoded_words.append(output_lang.index2word[ni.item()])
 
         decoder_input = Variable(torch.LongTensor([[ni]]))
         decoder_input = decoder_input.cuda() if use_cuda else decoder_input
@@ -265,6 +271,8 @@ def evaluateSamples(input_lang, output_lang, encoder, decoder, samples, max_leng
         # print((output_words, p[1]))
         if output_words == p[1]:
             corr += 1
+        # else:
+            # print((p[0], output_words, p[1]))
         tot += 1
     return corr, tot, corr / tot
 
@@ -307,9 +315,32 @@ def crossValidation(in_lang, out_lang, encoder, decoder, samples, max_length, n_
     print('{0}-fold Cross Validation Accuracy: {1}/{2} = {3}%'.format(n_folds, correct, total, 100. * correct / total))
 
 
+def write_train_vs_test_hidden_params(in_lang, out_lang, encoder, decoder, train_samples, eval_samples, max_length):
+
+
+    with open('train1.csv', 'w') as fh:
+        decoder.testing_mode(fh)
+        evaluateSamples(in_lang, out_lang, encoder, decoder, train_samples, max_length)
+
+    with open('test1.csv', 'w') as fh:
+        decoder.testing_mode(fh)
+        evaluateSamples(in_lang, out_lang, encoder, decoder, eval_samples, max_length)
+
+
+
+def createTrainingData(samples, in_lang, out_lang):
+    x = 1
+
+
+
+
+
+def testClassifier(in_lang, out_lang, encoder, decoder, samples, perc, max_length):
+    createTrainingData(samples, in_lang, out_lang)
+
 def evalGeneralization(in_lang, out_lang, encoder, decoder, samples, perc, max_length):
-    for _ in range(10):
-        random.shuffle(samples)
+    # for _ in range(10):
+    #     random.shuffle(samples)
 
     encoder.train()
     decoder.train()
@@ -329,6 +360,10 @@ def evalGeneralization(in_lang, out_lang, encoder, decoder, samples, perc, max_l
     decoder.eval()
 
     corr, tot, acc = evaluateSamples(in_lang, out_lang, encoder, decoder, eval_samples, max_length)
+
+
+
+    # write_train_vs_test_hidden_params(in_lang, out_lang, encoder, decoder, train_samples, eval_samples, max_length)
     print('Held-out Accuracy: {0}/{1} = {2}%'.format(corr, tot, 100. * acc))
     return acc
 
